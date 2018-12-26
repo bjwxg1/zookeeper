@@ -97,6 +97,7 @@ import org.slf4j.MDC;
  * connected to as needed.
  *
  */
+//Zookeeper Client到服务器端的Socket连接
 public class ClientCnxn {
     private static final Logger LOG = LoggerFactory.getLogger(ClientCnxn.class);
 

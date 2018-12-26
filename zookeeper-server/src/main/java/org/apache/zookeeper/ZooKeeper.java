@@ -84,11 +84,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * 线程安全
  * This is the main class of ZooKeeper client library. To use a ZooKeeper
  * service, an application must first instantiate an object of ZooKeeper class.
  * All the iterations will be done by calling the methods of ZooKeeper class.
  * The methods of this class are thread-safe unless otherwise noted.
  * <p>
+ *  通过心跳和Sever保持回话的有效性
  * Once a connection to a server is established, a session ID is assigned to the
  * client. The client will send heart beats to the server periodically to keep
  * the session valid.
@@ -96,17 +98,20 @@ import java.util.Set;
  * The application can call ZooKeeper APIs through a client as long as the
  * session ID of the client remains valid.
  * <p>
+ * 如果server长时间收不到心跳session会过期
  * If for some reason, the client fails to send heart beats to the server for a
  * prolonged period of time (exceeding the sessionTimeout value, for instance),
  * the server will expire the session, and the session ID will become invalid.
  * The client object will no longer be usable. To make ZooKeeper API calls, the
  * application must create a new client object.
  * <p>
+ *  如果Zookeeper连接的Server失败或者没有响应，在回话超时前Zookeeper会重新尝试连接到其他的机器上
  * If the ZooKeeper server the client currently connects to fails or otherwise
  * does not respond, the client will automatically try to connect to another
  * server before its session ID expires. If successful, the application can
  * continue to use the client.
  * <p>
+ *  Zk API包括同步和异步API
  * The ZooKeeper API methods are either synchronous or asynchronous. Synchronous
  * methods blocks until the server has responded. Asynchronous methods just queue
  * the request for sending and return immediately. They take a callback object that
@@ -123,6 +128,7 @@ import java.util.Set;
  * A client needs an object of a class implementing Watcher interface for
  * processing the events delivered to the client.
  *
+ * 当Client丢失或者重连，所有和这个Client关联的watch都看作是被触发，没有发送的event会丢失
  * When a client drops the current connection and re-connects to a server, all the
  * existing watches are considered as being triggered but the undelivered events
  * are lost. To emulate this, the client will generate a special event to tell
@@ -164,6 +170,7 @@ public class ZooKeeper implements AutoCloseable {
         Environment.logEnv("Client environment:", LOG);
     }
 
+    //持有解析后的connectString，提供next方法返回地址供client连接
     protected final HostProvider hostProvider;
 
     /**
@@ -283,8 +290,9 @@ public class ZooKeeper implements AutoCloseable {
                 throws KeeperException {
             // Validate the provided znode path contains the given watcher of
             // watcherType
+            //判断watcher是否存在
             containsWatcher(clientPath, watcher, watcherType);
-
+            //主要用于构造返回结果集
             Map<EventType, Set<Watcher>> removedWatchers = new HashMap<EventType, Set<Watcher>>();
             HashSet<Watcher> childWatchersToRem = new HashSet<Watcher>();
             removedWatchers
@@ -641,7 +649,7 @@ public class ZooKeeper implements AutoCloseable {
      * To create a ZooKeeper client object, the application needs to pass a
      * connection string containing a comma separated list of host:port pairs,
      * each corresponding to a ZooKeeper server.
-     * <p>
+     * <p>回话的建立是异步的，watch通知可能在构造函数返回前后
      * Session establishment is asynchronous. This constructor will initiate
      * connection to the server and return immediately - potentially (usually)
      * before the session is fully established. The watcher argument specifies
@@ -870,7 +878,9 @@ public class ZooKeeper implements AutoCloseable {
             clientConfig = new ZKClientConfig();
         }
         this.clientConfig = clientConfig;
+        //初始化watchManager
         watchManager = defaultWatchManager();
+        //设置defaultWatcher
         watchManager.defaultWatcher = watcher;
         ConnectStringParser connectStringParser = new ConnectStringParser(
                 connectString);
@@ -890,6 +900,7 @@ public class ZooKeeper implements AutoCloseable {
         return new ClientCnxn(chrootPath, hostProvider, sessionTimeout, this,
                 watchManager, clientCnxnSocket, canBeReadOnly);
     }
+
 
     /**
      * To create a ZooKeeper client object, the application needs to pass a
@@ -943,6 +954,7 @@ public class ZooKeeper implements AutoCloseable {
      * @throws IllegalArgumentException
      *             if an invalid chroot path is specified
      */
+    //TODO readonly的意义
     public ZooKeeper(String connectString, int sessionTimeout, Watcher watcher,
             boolean canBeReadOnly) throws IOException {
         this(connectString, sessionTimeout, watcher, canBeReadOnly,
