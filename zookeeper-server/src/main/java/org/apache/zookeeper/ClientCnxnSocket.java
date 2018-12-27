@@ -60,12 +60,16 @@ abstract class ClientCnxnSocket {
      * readLength() to receive the full message.
      */
     protected ByteBuffer incomingBuffer = lenBuffer;
+    //sent和recv计数器
     protected final AtomicLong sentCount = new AtomicLong(0L);
     protected final AtomicLong recvCount = new AtomicLong(0L);
+
     protected long lastHeard;
     protected long lastSend;
     protected long now;
+    //发送线程
     protected ClientCnxn.SendThread sendThread;
+    //发送队列
     protected LinkedBlockingDeque<Packet> outgoingQueue;
     protected ZKClientConfig clientConfig;
     private int packetLen = ZKClientConfig.CLIENT_MAX_PACKET_LENGTH_DEFAULT;

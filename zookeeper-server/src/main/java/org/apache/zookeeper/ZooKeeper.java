@@ -886,13 +886,16 @@ public class ZooKeeper implements AutoCloseable {
                 connectString);
         hostProvider = aHostProvider;
 
+        //创建ClientCnxn
         cnxn = createConnection(connectStringParser.getChrootPath(),
                 hostProvider, sessionTimeout, this, watchManager,
                 getClientCnxnSocket(), canBeReadOnly);
+        //启动SendThread和EventThread
         cnxn.start();
     }
 
     // @VisibleForTesting
+    //创建ClientCnxn
     protected ClientCnxn createConnection(String chrootPath,
             HostProvider hostProvider, int sessionTimeout, ZooKeeper zooKeeper,
             ClientWatchManager watcher, ClientCnxnSocket clientCnxnSocket,
@@ -954,7 +957,7 @@ public class ZooKeeper implements AutoCloseable {
      * @throws IllegalArgumentException
      *             if an invalid chroot path is specified
      */
-    //TODO readonly的意义
+    //readonly的意义：如果Zookeeper Server出现网络分区，是否允许只读模式
     public ZooKeeper(String connectString, int sessionTimeout, Watcher watcher,
             boolean canBeReadOnly) throws IOException {
         this(connectString, sessionTimeout, watcher, canBeReadOnly,
@@ -2947,6 +2950,7 @@ public class ZooKeeper implements AutoCloseable {
         String clientCnxnSocketName = getClientConfig().getProperty(
                 ZKClientConfig.ZOOKEEPER_CLIENT_CNXN_SOCKET);
         if (clientCnxnSocketName == null) {
+            //默认创建的Socket为ClientCnxnSocketNIO
             clientCnxnSocketName = ClientCnxnSocketNIO.class.getName();
         }
         try {
