@@ -2041,12 +2041,14 @@ public class ZooKeeper implements AutoCloseable {
 
         // the watch contains the un-chroot path
         WatchRegistration wcb = null;
+        //创建WatchRegistration
         if (watcher != null) {
             wcb = new DataWatchRegistration(watcher, clientPath);
         }
-
+        //Chroot处理
         final String serverPath = prependChroot(clientPath);
 
+        //创建Request并提交到ClientCnxn
         RequestHeader h = new RequestHeader();
         h.setType(ZooDefs.OpCode.getData);
         GetDataRequest request = new GetDataRequest();
@@ -2061,6 +2063,7 @@ public class ZooKeeper implements AutoCloseable {
         if (stat != null) {
             DataTree.copyStat(response.getStat(), stat);
         }
+        //返回数据
         return response.getData();
     }
 

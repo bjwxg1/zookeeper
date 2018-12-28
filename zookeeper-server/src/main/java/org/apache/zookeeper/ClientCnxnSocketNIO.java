@@ -71,6 +71,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         if (sock == null) {
             throw new IOException("Socket is null!");
         }
+        //读取服务器端数据
         if (sockKey.isReadable()) {
             int rc = sock.read(incomingBuffer);
             if (rc < 0) {
@@ -105,6 +106,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 }
             }
         }
+        //向服务器端发送数据
         if (sockKey.isWritable()) {
             Packet p = findSendablePacket(outgoingQueue,
                     sendThread.tunnelAuthInProgress());
@@ -120,6 +122,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     }
                     p.createBB();
                 }
+                //向socker写数据
                 sock.write(p.bb);
                 if (!p.bb.hasRemaining()) {
                     sentCount.getAndIncrement();
@@ -360,7 +363,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     sendThread.primeConnection();
                 }
             } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
-                doIO(pendingQueue, cnxn);
+                 doIO(pendingQueue, cnxn);
             }
         }
         if (sendThread.getZkState().isConnected()) {

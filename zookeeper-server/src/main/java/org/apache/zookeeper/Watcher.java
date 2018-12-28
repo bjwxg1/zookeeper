@@ -72,6 +72,7 @@ public interface Watcher {
              * This state is generated for read-only clients only since
              * read/write clients aren't allowed to connect to r/o servers.
              */
+            //ConnectedReadOnly状态
             ConnectedReadOnly (5),
 
             /**
@@ -84,6 +85,7 @@ public interface Watcher {
              * client connection (the session) is no longer valid. You must
              * create a new client connection (instantiate a new ZooKeeper
              * instance) if you with to access the ensemble. */
+            //会话过期状态
             Expired (-112),
             
             /** 
@@ -91,6 +93,7 @@ public interface Watcher {
              * the server, but is generated locally when a client calls
              * {@link ZooKeeper#close()} or {@link ZooKeeper#close(int)}
              */
+            //会话关闭状态
             Closed (7);
 
             private final int intValue;     // Integer representation of value
@@ -128,11 +131,17 @@ public interface Watcher {
         @InterfaceAudience.Public
         public enum EventType {
             None (-1),
+            //节点创建事件
             NodeCreated (1),
+            //节点删除事件
             NodeDeleted (2),
+            //节点创建事件
             NodeDataChanged (3),
+            //节点创建事件
             NodeChildrenChanged (4),
+            //节点创建事件
             DataWatchRemoved (5),
+            //节点创建事件
             ChildWatchRemoved (6);
 
             private final int intValue;     // Integer representation of value

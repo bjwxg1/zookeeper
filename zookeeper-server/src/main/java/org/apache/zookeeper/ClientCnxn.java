@@ -682,18 +682,22 @@ public class ClientCnxn {
     protected void finishPacket(Packet p) {
         int err = p.replyHeader.getErr();
         if (p.watchRegistration != null) {
+            //注册Watcher
             p.watchRegistration.register(err);
         }
         // Add all the removed watch events to the event queue, so that the
         // clients will be notified with 'Data/Child WatchRemoved' event type.
+        //删除相应的watcher
         if (p.watchDeregistration != null) {
             Map<EventType, Set<Watcher>> materializedWatchers = null;
             try {
+                //
                 materializedWatchers = p.watchDeregistration.unregister(err);
                 for (Entry<EventType, Set<Watcher>> entry : materializedWatchers
                         .entrySet()) {
                     Set<Watcher> watchers = entry.getValue();
                     if (watchers.size() > 0) {
+                        //将watchers添加到event队列等待处理
                         queueEvent(p.watchDeregistration.getClientPath(), err,
                                 watchers, entry.getKey());
                         // ignore connectionloss when removing from local
@@ -708,6 +712,7 @@ public class ClientCnxn {
             }
         }
 
+        //如果callBack不为空，添加到等待队列
         if (p.cb == null) {
             synchronized (p) {
                 p.finished = true;
@@ -749,6 +754,8 @@ public class ClientCnxn {
         default:
             p.replyHeader.setErr(KeeperException.Code.CONNECTIONLOSS.intValue());
         }
+        //1.注册watcher；2：移除watcher并将移除的watcher加入Event队列等待处理
+        //3.回调处理
         finishPacket(p);
     }
 
@@ -1113,15 +1120,17 @@ public class ClientCnxn {
             ", closing socket connection and attempting reconnect";
         @Override
         public void run() {
+            //初始化clientCnxnSocket的SessionId和outgoingQueue
             clientCnxnSocket.introduce(this, sessionId, outgoingQueue);
             clientCnxnSocket.updateNow();
             clientCnxnSocket.updateLastSendAndHeard();
-            int to;
+            int to;//timeOut
             long lastPingRwServer = Time.currentElapsedTime();
             final int MAX_SEND_PING_INTERVAL = 10000; //10 seconds
             InetSocketAddress serverAddress = null;
             while (state.isAlive()) {
                 try {
+                    //如果连接已断开,重新选择Server进行连接
                     if (!clientCnxnSocket.isConnected()) {
                         // don't re-establish connection if we are closing
                         if (closing) {
@@ -1131,6 +1140,7 @@ public class ClientCnxn {
                             serverAddress = rwServerAddress;
                             rwServerAddress = null;
                         } else {
+                            //选择Server
                             serverAddress = hostProvider.next(1000);
                         }
                         startConnect(serverAddress);
@@ -1194,6 +1204,7 @@ public class ClientCnxn {
                         		((clientCnxnSocket.getIdleSend() > 1000) ? 1000 : 0);
                         //send a ping request either time is due or no packet sent out within MAX_SEND_PING_INTERVAL
                         if (timeToNextPing <= 0 || clientCnxnSocket.getIdleSend() > MAX_SEND_PING_INTERVAL) {
+                            //发送心跳消息
                             sendPing();
                             clientCnxnSocket.updateLastSend();
                         } else {
@@ -1204,6 +1215,7 @@ public class ClientCnxn {
                     }
 
                     // If we are in read-only mode, seek for read/write server
+                    //如果是readOnly寻找
                     if (state == States.CONNECTEDREADONLY) {
                         long now = Time.currentElapsedTime();
                         int idlePingRwServer = (int) (now - lastPingRwServer);
@@ -1217,6 +1229,7 @@ public class ClientCnxn {
                         to = Math.min(to, pingRwTimeout - idlePingRwServer);
                     }
 
+                    //进行真正的网络操作
                     clientCnxnSocket.doTransport(to, pendingQueue, ClientCnxn.this);
                 } catch (Throwable e) {
                     if (closing) {
@@ -1507,6 +1520,7 @@ public class ClientCnxn {
             WatchDeregistration watchDeregistration)
             throws InterruptedException {
         ReplyHeader r = new ReplyHeader();
+        //将请求信息添加到待发送队列
         Packet packet = queuePacket(h, r, request, response, null, null, null,
                 null, watchRegistration, watchDeregistration);
         synchronized (packet) {
@@ -1581,6 +1595,7 @@ public class ClientCnxn {
         // Note that we do not generate the Xid for the packet yet. It is
         // generated later at send-time, by an implementation of ClientCnxnSocket::doIO(),
         // where the packet is actually sent.
+        //创建Packet对象
         packet = new Packet(h, r, request, response, watchRegistration);
         packet.cb = cb;
         packet.ctx = ctx;
@@ -1592,6 +1607,7 @@ public class ClientCnxn {
         // 2. synchronized against each packet. So if a closeSession packet is added,
         // later packet will be notified.
         synchronized (state) {
+            //判断是否alive和是否在关闭
             if (!state.isAlive() || closing) {
                 conLossPacket(packet);
             } else {
@@ -1600,9 +1616,11 @@ public class ClientCnxn {
                 if (h.getType() == OpCode.closeSession) {
                     closing = true;
                 }
+                //添加到outgoingQueue
                 outgoingQueue.add(packet);
             }
         }
+        //唤醒发送线程
         sendThread.getClientCnxnSocket().packetAdded();
         return packet;
     }
