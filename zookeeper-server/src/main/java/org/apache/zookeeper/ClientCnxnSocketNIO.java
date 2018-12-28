@@ -52,6 +52,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
 
     ClientCnxnSocketNIO(ZKClientConfig clientConfig) throws IOException {
         this.clientConfig = clientConfig;
+        //初始化properties
         initProperties();
     }
 
