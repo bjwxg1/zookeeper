@@ -829,6 +829,7 @@ public class ClientCnxn {
             ReplyHeader replyHdr = new ReplyHeader();
 
             replyHdr.deserialize(bbia, "header");
+            //处理心跳响应
             if (replyHdr.getXid() == -2) {
                 // -2 is the xid for pings
                 if (LOG.isDebugEnabled()) {
@@ -840,6 +841,7 @@ public class ClientCnxn {
                 }
                 return;
             }
+            //处理Auth响应
             if (replyHdr.getXid() == -4) {
                 // -4 is the xid for AuthPacket
                 //授权失败
@@ -856,6 +858,7 @@ public class ClientCnxn {
                 }
                 return;
             }
+            //处理通知响应
             if (replyHdr.getXid() == -1) {
                 // -1 means notification
                 if (LOG.isDebugEnabled()) {
@@ -1235,7 +1238,7 @@ public class ClientCnxn {
                     }
 
                     // If we are in read-only mode, seek for read/write server
-                    //如果是readOnly寻找
+                    //如果是readOnly寻找读写服务器进行重连
                     if (state == States.CONNECTEDREADONLY) {
                         long now = Time.currentElapsedTime();
                         int idlePingRwServer = (int) (now - lastPingRwServer);

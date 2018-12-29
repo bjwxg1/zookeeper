@@ -75,6 +75,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         //读取服务器端数据
         if (sockKey.isReadable()) {
             int rc = sock.read(incomingBuffer);
+            //rc
             if (rc < 0) {
                 throw new EndOfStreamException(
                         "Unable to read additional data from server sessionid 0x"
@@ -100,6 +101,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     updateLastHeard();
                     initialized = true;
                 } else {
+                    //读取响应
                     sendThread.readResponse(incomingBuffer);
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
