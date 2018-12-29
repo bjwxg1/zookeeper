@@ -688,16 +688,16 @@ public class ClientCnxn {
     protected void finishPacket(Packet p) {
         int err = p.replyHeader.getErr();
         if (p.watchRegistration != null) {
-            //注册Watcher
+            //注册Watcher(真正的是否注册需要根据err和watchRegistration类型确定)
             p.watchRegistration.register(err);
         }
         // Add all the removed watch events to the event queue, so that the
         // clients will be notified with 'Data/Child WatchRemoved' event type.
-        //删除相应的watcher
+        //删除相应的watcher，并将删除的Watcher添加到eventQueue等待EventThread处理
         if (p.watchDeregistration != null) {
             Map<EventType, Set<Watcher>> materializedWatchers = null;
             try {
-                //
+                //移除相关的watcher并返回
                 materializedWatchers = p.watchDeregistration.unregister(err);
                 for (Entry<EventType, Set<Watcher>> entry : materializedWatchers
                         .entrySet()) {
@@ -718,7 +718,7 @@ public class ClientCnxn {
             }
         }
 
-        //如果callBack不为空，添加到等待队列
+        //判断callBack是否为空。如果为空说明是同步调用直接进行notify;如过异步调用添加到event队列
         if (p.cb == null) {
             synchronized (p) {
                 p.finished = true;
@@ -750,6 +750,7 @@ public class ClientCnxn {
         if (p.replyHeader == null) {
             return;
         }
+        //设置异常Code
         switch (state) {
         case AUTH_FAILED:
             p.replyHeader.setErr(KeeperException.Code.AUTHFAILED.intValue());
@@ -760,8 +761,7 @@ public class ClientCnxn {
         default:
             p.replyHeader.setErr(KeeperException.Code.CONNECTIONLOSS.intValue());
         }
-        //1.注册watcher；2：移除watcher并将移除的watcher加入Event队列等待处理
-        //3.回调处理
+        //调用finishPacket
         finishPacket(p);
     }
 
@@ -1544,20 +1544,20 @@ public class ClientCnxn {
             WatchDeregistration watchDeregistration)
             throws InterruptedException {
         ReplyHeader r = new ReplyHeader();
-        //将请求信息添加到待发送队列
+        //将请求信息添加到待发送队列，等待发送线程进行发送操作
         Packet packet = queuePacket(h, r, request, response, null, null, null,
                 null, watchRegistration, watchDeregistration);
+        //因为是同步调用等待请求处理完成
         synchronized (packet) {
             if (requestTimeout > 0) {
-                // Wait for request completion with timeout
                 waitForPacketFinish(r, packet);
             } else {
-                // Wait for request completion infinitely
                 while (!packet.finished) {
                     packet.wait();
                 }
             }
         }
+        //如果请求超时进行clean和notify
         if (r.getErr() == Code.REQUESTTIMEOUT.intValue()) {
             sendThread.cleanAndNotifyState();
         }
@@ -1619,7 +1619,7 @@ public class ClientCnxn {
         // Note that we do not generate the Xid for the packet yet. It is
         // generated later at send-time, by an implementation of ClientCnxnSocket::doIO(),
         // where the packet is actually sent.
-        //创建Packet对象
+        //创建Packet对象,此处在构建packet对象时并没有设置XID，一直等待进行真正的发送时设置
         packet = new Packet(h, r, request, response, watchRegistration);
         packet.cb = cb;
         packet.ctx = ctx;
@@ -1644,7 +1644,7 @@ public class ClientCnxn {
                 outgoingQueue.add(packet);
             }
         }
-        //唤醒发送线程
+        //唤醒发送线程，让发送线程工作
         sendThread.getClientCnxnSocket().packetAdded();
         return packet;
     }
