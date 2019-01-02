@@ -83,7 +83,8 @@ public class FileSnap implements SnapShot {
             snap = snapList.get(i);
             LOG.info("Reading snapshot " + snap);
             try (InputStream snapIS = new BufferedInputStream(new FileInputStream(snap));
-                 CheckedInputStream crcIn = new CheckedInputStream(snapIS, new Adler32())) {
+                 CheckedInputStream crcIn = new CheckedInputStream(snapIS, new Adler32()))
+            {
                 InputArchive ia = BinaryInputArchive.getArchive(crcIn);
                 deserialize(dt, sessions, ia);
                 long checkSum = crcIn.getChecksum().getValue();
