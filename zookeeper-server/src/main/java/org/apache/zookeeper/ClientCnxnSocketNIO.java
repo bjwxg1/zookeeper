@@ -101,7 +101,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     updateLastHeard();
                     initialized = true;
                 } else {
-                    //读取响应
+                    //读取响应，将响应解码后添加到Event队列等待处理
                     sendThread.readResponse(incomingBuffer);
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
@@ -359,13 +359,16 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         updateNow();
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
+            //连接处理
             if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
                 if (sc.finishConnect()) {
                     updateLastSendAndHeard();
                     updateSocketAddresses();
                     sendThread.primeConnection();
                 }
-            } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+            }
+            //读写处理
+            else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
                  doIO(pendingQueue, cnxn);
             }
         }

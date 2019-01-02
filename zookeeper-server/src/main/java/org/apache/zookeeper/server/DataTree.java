@@ -90,17 +90,19 @@ public class DataTree {
      * This hashtable provides a fast lookup to the datanodes. The tree is the
      * source of truth and is where all the locking occurs
      */
+    //存储所有的DataNode key--》path
     private final ConcurrentHashMap<String, DataNode> nodes =
         new ConcurrentHashMap<String, DataNode>();
 
+    //WatchManager
     private IWatchManager dataWatches;
-
     private IWatchManager childWatches;
 
     /** cached total size of paths and data for all DataNodes */
     private final AtomicLong nodeDataSize = new AtomicLong(0);
 
     /** the root of zookeeper tree */
+    //rootPath
     private static final String rootZookeeper = "/";
 
     /** the zookeeper nodes that acts as the management and status node **/

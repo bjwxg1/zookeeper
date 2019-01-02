@@ -71,7 +71,9 @@ public class ZKDatabase {
      * all these members.
      */
     protected DataTree dataTree;
+    //保存Session信息
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
+    //committed log
     protected FileTxnSnapLog snapLog;
     protected long minCommittedLog, maxCommittedLog;
 

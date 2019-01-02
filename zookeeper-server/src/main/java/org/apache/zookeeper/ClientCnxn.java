@@ -506,10 +506,13 @@ public class ClientCnxn {
            try {
               isRunning = true;
               while (true) {
+                  //从waitingEvents中获取待处理时间
                  Object event = waitingEvents.take();
+                 //如果是eventOfDeath设置wasKilled为true
                  if (event == eventOfDeath) {
                     wasKilled = true;
                  } else {
+                     //进行相关的处理
                     processEvent(event);
                  }
                  if (wasKilled)
@@ -1283,6 +1286,7 @@ public class ClientCnxn {
                         }
                         // At this point, there might still be new packets appended to outgoingQueue.
                         // they will be handled in next connection or cleared up if closed.
+                        //如果到此处说明Zookeeper Client已经关闭，进行相关的清除操作
                         cleanAndNotifyState();
                     }
                 }
@@ -1294,6 +1298,7 @@ public class ClientCnxn {
             }
             //关闭Socket
             clientCnxnSocket.close();
+            //
             if (state.isAlive()) {
                 eventThread.queueEvent(new WatchedEvent(Event.EventType.None,
                         Event.KeeperState.Disconnected, null));
@@ -1306,7 +1311,9 @@ public class ClientCnxn {
         }
 
         private void cleanAndNotifyState() {
+            //Cleanup待发送队列和待响应队列
             cleanup();
+            //将DisConnect时间添加到待处理队列等待EventThread处理
             if (state.isAlive()) {
                 eventThread.queueEvent(new WatchedEvent(Event.EventType.None,
                         Event.KeeperState.Disconnected, null));
@@ -1370,15 +1377,14 @@ public class ClientCnxn {
 
         private void cleanup() {
             clientCnxnSocket.cleanup();
+            //处理待响应队列，触发相关操作
             synchronized (pendingQueue) {
                 for (Packet p : pendingQueue) {
                     conLossPacket(p);
                 }
                 pendingQueue.clear();
             }
-            // We can't call outgoingQueue.clear() here because
-            // between iterating and clear up there might be new
-            // packets added in queuePacket().
+            //处理待发送队列
             Iterator<Packet> iter = outgoingQueue.iterator();
             while (iter.hasNext()) {
                 Packet p = iter.next();
