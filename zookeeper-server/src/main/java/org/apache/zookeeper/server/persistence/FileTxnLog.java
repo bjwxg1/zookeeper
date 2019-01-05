@@ -254,31 +254,43 @@ public class FileTxnLog implements TxnLog {
         } else {
             lastZxidSeen = hdr.getZxid();
         }
+
+        //第一次写文件、或者文件已经写满会创建新的logStream
         if (logStream==null) {
            if(LOG.isInfoEnabled()){
                 LOG.info("Creating new log file: " + Util.makeLogName(hdr.getZxid()));
            }
 
+           //创建新的日志文件并和输出流相关联
            logFileWrite = new File(logDir, Util.makeLogName(hdr.getZxid()));
            fos = new FileOutputStream(logFileWrite);
            logStream=new BufferedOutputStream(fos);
+
            oa = BinaryOutputArchive.getArchive(logStream);
+           //创建FileHeader并写入
            FileHeader fhdr = new FileHeader(TXNLOG_MAGIC,VERSION, dbId);
            fhdr.serialize(oa, "fileheader");
            // Make sure that the magic number is written before padding.
            logStream.flush();
            filePadding.setCurrentSize(fos.getChannel().position());
+           //添加到streamList
            streamsToFlush.add(fos);
         }
+        //文件预分配，并使用0补齐
+        //通过文件预分配操作来避磁盘的随机访问增加问价写效率
         filePadding.padFile(fos.getChannel());
+        //序列化
         byte[] buf = Util.marshallTxnEntry(hdr, txn);
         if (buf == null || buf.length == 0) {
             throw new IOException("Faulty serialization for header " +
                     "and txn");
         }
+        //生成校验值
         Checksum crc = makeChecksumAlgorithm();
         crc.update(buf, 0, buf.length);
+        //写入校验和
         oa.writeLong(crc.getValue(), "txnEntryCRC");
+        //写入事务
         Util.writeTxnBytes(oa, buf);
 
         return true;
@@ -364,7 +376,9 @@ public class FileTxnLog implements TxnLog {
      * commit the logs. make sure that everything hits the
      * disk
      */
+    //将buffer中的数据流刷新到磁盘
     public synchronized void commit() throws IOException {
+        //
         if (logStream != null) {
             logStream.flush();
         }
@@ -376,6 +390,7 @@ public class FileTxnLog implements TxnLog {
                 FileChannel channel = log.getChannel();
                 channel.force(false);
 
+                //强制刷新耗时
                 syncElapsedMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startSyncNS);
                 if (syncElapsedMS > fsyncWarningThresholdMS) {
                     if(serverStats != null) {
@@ -391,6 +406,7 @@ public class FileTxnLog implements TxnLog {
                 ServerMetrics.FSYNC_TIME.add(syncElapsedMS);
             }
         }
+        //关闭流
         while (streamsToFlush.size() > 1) {
             streamsToFlush.removeFirst().close();
         }
@@ -398,7 +414,7 @@ public class FileTxnLog implements TxnLog {
         // Roll the log file if we exceed the size limit
         if(txnLogSizeLimit > 0) {
             long logSize = getCurrentLogSize();
-
+            //如果logSize大于txnLogSizeLimit，进行日志文件roll操作
             if (logSize > txnLogSizeLimit) {
                 LOG.debug("Log size limit reached: {}", logSize);
                 rollLog();
