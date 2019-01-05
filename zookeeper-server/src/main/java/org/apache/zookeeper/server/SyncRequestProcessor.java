@@ -65,6 +65,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
     /**
      * The number of log entries to log before starting a snapshot
      */
+    //默认值100000，表示两次进行快照保存之间进行的事务操作数
     private static int snapCount = ZooKeeperServer.getSnapCount();
 
     private final Request requestOfDeath = Request.requestOfDeath;

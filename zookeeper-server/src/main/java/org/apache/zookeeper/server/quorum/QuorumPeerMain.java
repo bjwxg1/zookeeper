@@ -128,6 +128,7 @@ public class QuorumPeerMain {
                 .getSnapRetainCount(), config.getPurgeInterval());
         purgeMgr.start();
 
+        //判断是单机启动还是分布式启动
         if (args.length == 1 && config.isDistributed()) {
             runFromConfig(config);
         } else {

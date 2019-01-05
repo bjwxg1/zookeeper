@@ -72,7 +72,7 @@ public class PurgeTxnLog {
      * @throws IOException
      */
     public static void purge(File dataDir, File snapDir, int num) throws IOException {
-        //如果snapRetainCount<3直接抛出异常
+        //如果snapRetainCount<3直接抛出异常，系统要求snapRetainCount>=3
         if (num < 3) {
             throw new IllegalArgumentException(COUNT_ERR_MSG);
         }
@@ -83,15 +83,21 @@ public class PurgeTxnLog {
         List<File> snaps = txnLog.findNRecentSnapshots(num);
         int numSnaps = snaps.size();
         if (numSnaps > 0) {
+            //调用方法删除snapShot和事务日志文件
             purgeOlderSnapshots(txnLog, snaps.get(numSnaps - 1));
         }
     }
 
     // VisibleForTesting
     static void purgeOlderSnapshots(FileTxnSnapLog txnLog, File snapShot) {
+        //根据文件名获取Zxid
         final long leastZxidToBeRetain = Util.getZxidFromName(
                 snapShot.getName(), PREFIX_SNAPSHOT);
 
+        //此处需要注意的是的snapShot是快照日志文件，根据snapShot文件可以获取leastZxidToBeRetain
+        //对于快照文件zxid小于leastZxidToBeRetain都可以删除；
+        //但是对于事务日志文件zxid小于leastZxidToBeRetain不一定可以删除，因为这个事务日志文件保存的事务的id可能比leastZxidToBeRetain大
+        //所以为了保证在服务器宕机的情况下是否可以完全恢复需要准确判断事务日志文件是否可以删除
         /**
          * We delete all files with a zxid in their name that is less than leastZxidToBeRetain.
          * This rule applies to both snapshot files as well as log files, with the following
@@ -101,7 +107,8 @@ public class PurgeTxnLog {
          * precisely, a log file named log.(X-a) may contain transactions newer than snapshot.X if
          * there are no other log files with starting zxid in the interval (X-a, X].  Assuming the
          * latter condition is true, log.(X-a) must be retained to ensure that snapshot.X is
-         * recoverable.  In fact, this log file may very well extend beyond snapshot.X to newer
+         * recoverable.
+         * In fact, this log file may very well extend beyond snapshot.X to newer
          * snapshot files if these newer snapshots were not accompanied by log rollover (possible in
          * the learner state machine at the time of this writing).  We can make more precise
          * determination of whether log.(leastZxidToBeRetain-a) for the smallest 'a' is actually
@@ -112,6 +119,7 @@ public class PurgeTxnLog {
          * calling txnLog.getSnapshotLogs().
          */
         final Set<File> retainedTxnLogs = new HashSet<File>();
+        //txnLog.getSnapshotLogs(leastZxidToBeRetain))获取需要保存的日志文件
         retainedTxnLogs.addAll(Arrays.asList(txnLog.getSnapshotLogs(leastZxidToBeRetain)));
 
         /**
@@ -136,7 +144,9 @@ public class PurgeTxnLog {
                 return true;
             }
         }
+
         // add all non-excluded log files
+        //获取所有需要删除的LogFile
         File[] logs = txnLog.getDataDir().listFiles(new MyFileFilter(PREFIX_LOG));
         List<File> files = new ArrayList<>();
         if (logs != null) {
@@ -144,6 +154,7 @@ public class PurgeTxnLog {
         }
 
         // add all non-excluded snapshot files to the deletion list
+        //获取所有需要删除的snapShot文件
         File[] snapshots = txnLog.getSnapDir().listFiles(new MyFileFilter(PREFIX_SNAPSHOT));
         if (snapshots != null) {
             files.addAll(Arrays.asList(snapshots));
@@ -157,6 +168,7 @@ public class PurgeTxnLog {
                 "\t"+f.getPath();
             LOG.info(msg);
             System.out.println(msg);
+            //删除日志文件
             if(!f.delete()){
                 System.err.println("Failed to remove "+f.getPath());
             }

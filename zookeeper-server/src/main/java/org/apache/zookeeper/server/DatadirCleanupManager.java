@@ -94,11 +94,13 @@ public class DatadirCleanupManager {
      * @see PurgeTxnLog#purge(File, File, int)
      */
     public void start() {
+        //判断是否已经启动，如果已启动直接返回
         if (PurgeTaskStatus.STARTED == purgeTaskStatus) {
             LOG.warn("Purge task is already running.");
             return;
         }
         // Don't schedule the purge task with zero or negative purge interval.
+        //purgeInterval <= 0表示不需要进行清理直接返回
         if (purgeInterval <= 0) {
             LOG.info("Purge task is not scheduled.");
             return;
@@ -110,6 +112,7 @@ public class DatadirCleanupManager {
         TimerTask task = new PurgeTask(dataLogDir, snapDir, snapRetainCount);
         timer.scheduleAtFixedRate(task, 0, TimeUnit.HOURS.toMillis(purgeInterval));
 
+        //设置任务状态为STARTED
         purgeTaskStatus = PurgeTaskStatus.STARTED;
     }
 

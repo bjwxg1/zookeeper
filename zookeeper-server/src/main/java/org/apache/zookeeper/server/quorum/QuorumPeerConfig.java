@@ -68,18 +68,22 @@ public class QuorumPeerConfig {
     private static boolean reconfigEnabled = false;
 
     //当前服务器对外地服务的地址：根据clientPort配置创建对外服务地址
+    //可以不配置，针对多网卡机器该参数允许为每个IP指定对外服务端口
     protected InetSocketAddress clientPortAddress;
     protected InetSocketAddress secureClientPortAddress;
     protected boolean sslQuorum = false;
     protected boolean shouldUsePortUnification = false;
     //数据快照目录，根据dataDir参数创建；如果dataLogDir没有配置，日志文件也会存储在该目录下
     protected File dataDir;
-    //事务日志存储目录数据快照目录，根据dataDir参数创建；如果dataLogDir没有配置，日志文件也会存储在该目录下
+    //事务日志存储目录数据快照目录，dataLogDir；如果dataLogDir没有配置，则保存在dataDir下
     protected File dataLogDir;
     protected String dynamicConfigFileStr = null;
     protected String configFileStr = null;
+    //ZK中的最小时间单元默认3000ms
     protected int tickTime = ZooKeeperServer.DEFAULT_TICK_TIME;
+    //单台服务连接到Server上的连接数限制
     protected int maxClientCnxns = 60;
+    //客户端会员超时时间限制，是tickTime的整数倍
     /** defaults to -1 if not set explicitly */
     protected int minSessionTimeout = -1;
     /** defaults to -1 if not set explicitly */
@@ -89,7 +93,9 @@ public class QuorumPeerConfig {
     protected boolean localSessionsEnabled = false;
     protected boolean localSessionsUpgradingEnabled = false;
 
+    //默认10，表示是tickTime的10倍；该参数主要用于Leader服务器等待Follower服务器启动并完成数据同步的时间
     protected int initLimit;
+    //默认5，表示是tickTime的5倍；该参数主要用于设置Leader和Follower之间心跳的最大延时，如果超过这个时间则表明Follower和Leader脱离同步；
     protected int syncLimit;
     protected int electionAlg = 3;
     protected int electionPort = 2182;
@@ -98,7 +104,9 @@ public class QuorumPeerConfig {
     protected long serverId = UNSET_SERVERID;
 
     protected QuorumVerifier quorumVerifier = null, lastSeenQuorumVerifier = null;
+    //最小值为3，在进行快照和日志文件清除是保留的文件数目
     protected int snapRetainCount = 3;
+    //配置快照和日志文件清除的频率，如果为负表示不开启
     protected int purgeInterval = 0;
     protected boolean syncEnabled = true;
 

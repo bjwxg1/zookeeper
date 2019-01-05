@@ -470,6 +470,7 @@ public class FileTxnSnapLog {
      * the most recent in front
      * @throws IOException
      */
+    //获取n个最新的快照
     public List<File> findNRecentSnapshots(int n) throws IOException {
         FileSnap snaplog = new FileSnap(snapDir);
         return snaplog.findNRecentSnapshots(n);

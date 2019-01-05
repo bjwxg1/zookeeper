@@ -146,6 +146,7 @@ public class FileTxnLog implements TxnLog {
     volatile FileOutputStream fos = null;
 
     File logDir;
+    //配置是否在事务提交进行强制刷盘操作。默认为True
     private final boolean forceSync = !System.getProperty("zookeeper.forceSync", "yes").equals("no");
     long dbId;
     private LinkedList<FileOutputStream> streamsToFlush =
@@ -309,6 +310,7 @@ public class FileTxnLog implements TxnLog {
         long logZxid = 0;
         // Find the log file that starts before or at the same time as the
         // zxid of the snapshot
+        //获取zxid<=的事务日志文件
         for (File f : files) {
             long fzxid = Util.getZxidFromName(f.getName(), LOG_FILE_PREFIX);
             if (fzxid > snapshotZxid) {
