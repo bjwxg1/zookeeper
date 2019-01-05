@@ -67,11 +67,14 @@ public class QuorumPeerConfig {
     private static boolean standaloneEnabled = true;
     private static boolean reconfigEnabled = false;
 
+    //当前服务器对外地服务的地址：根据clientPort配置创建对外服务地址
     protected InetSocketAddress clientPortAddress;
     protected InetSocketAddress secureClientPortAddress;
     protected boolean sslQuorum = false;
     protected boolean shouldUsePortUnification = false;
+    //数据快照目录，根据dataDir参数创建；如果dataLogDir没有配置，日志文件也会存储在该目录下
     protected File dataDir;
+    //事务日志存储目录数据快照目录，根据dataDir参数创建；如果dataLogDir没有配置，日志文件也会存储在该目录下
     protected File dataLogDir;
     protected String dynamicConfigFileStr = null;
     protected String configFileStr = null;

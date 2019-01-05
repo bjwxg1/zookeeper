@@ -81,6 +81,7 @@ public class QuorumPeerMain {
      * the command line.
      * @param args path to the configfile
      */
+    //Zookeeper服务器端启动主要调用该方法
     public static void main(String[] args) {
         QuorumPeerMain main = new QuorumPeerMain();
         try {
@@ -113,6 +114,7 @@ public class QuorumPeerMain {
     protected void initializeAndRun(String[] args)
         throws ConfigException, IOException, AdminServerException
     {
+        //创建并解析Config配置
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
             config.parse(args[0]);
