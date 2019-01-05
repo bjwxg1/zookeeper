@@ -164,8 +164,10 @@ public class QuorumPeerMain {
           ServerCnxnFactory cnxnFactory = null;
           ServerCnxnFactory secureCnxnFactory = null;
 
+          //创建cnxnFactory
           if (config.getClientPortAddress() != null) {
               cnxnFactory = ServerCnxnFactory.createFactory();
+              //配置cnxnFactory：clientPortAddress和maxClientCnxns
               cnxnFactory.configure(config.getClientPortAddress(),
                       config.getMaxClientCnxns(),
                       false);
@@ -178,6 +180,7 @@ public class QuorumPeerMain {
                       true);
           }
 
+          //创建quorumPeer
           quorumPeer = getQuorumPeer();
           quorumPeer.setRootMetricsContext(metricsProvider.getRootContext());
           quorumPeer.setTxnFactory(new FileTxnSnapLog(

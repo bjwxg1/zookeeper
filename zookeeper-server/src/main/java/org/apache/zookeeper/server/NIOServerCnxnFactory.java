@@ -734,19 +734,24 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     @Override
     public void start() {
         stopped = false;
+        //创建工作线程池
         if (workerPool == null) {
+            //注意使用的是 useAssignableThreads=false
             workerPool = new WorkerService(
                 "NIOWorker", numWorkerThreads, false);
         }
+        //启动SelectorThread
         for(SelectorThread thread : selectorThreads) {
             if (thread.getState() == Thread.State.NEW) {
                 thread.start();
             }
         }
         // ensure thread is started once and only once
+        //启动acceptThread
         if (acceptThread.getState() == Thread.State.NEW) {
             acceptThread.start();
         }
+        //启动过期检测线程
         if (expirerThread.getState() == Thread.State.NEW) {
             expirerThread.start();
         }

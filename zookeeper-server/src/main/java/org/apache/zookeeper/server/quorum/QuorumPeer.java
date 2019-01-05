@@ -124,13 +124,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * bootup and only thrown away in case of a truncate
      * message from the leader
      */
+    //存储数据
     private ZKDatabase zkDb;
 
     public static class QuorumServer {
         public InetSocketAddress addr = null;
-
         public InetSocketAddress electionAddr = null;
-        
         public InetSocketAddress clientAddr = null;
         
         public long id;
@@ -392,6 +391,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * We need this distinction to decide which ServerState to move to when
      * conditions change (e.g. which state to become after LOOKING).
      */
+    //LearnerType
+    //PARTICIPANT：参与选举；OBSERVER：不参与选举
     public enum LearnerType {
         PARTICIPANT, OBSERVER;
     }
@@ -866,6 +867,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
          }
          //加载database
         loadDataBase();
+        //启动ServerCnxnFactory
         startServerCnxnFactory();
         try {
             adminServer.start();
@@ -873,6 +875,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             LOG.warn("Problem starting AdminServer", e);
             System.out.println(e);
         }
+        //开始选举
         startLeaderElection();
         super.start();
     }
