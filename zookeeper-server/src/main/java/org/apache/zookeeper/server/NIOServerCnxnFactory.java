@@ -202,6 +202,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             try {
                 while (!stopped && !acceptSocket.socket().isClosed()) {
                     try {
+                        //accepte连接并分配给SelectorThread
                         select();
                     } catch (RuntimeException e) {
                         LOG.warn("Ignoring unexpected runtime exception", e);
@@ -237,12 +238,15 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                     if (!key.isValid()) {
                         continue;
                     }
+                    //判断是否可以进行accepte操作
                     if (key.isAcceptable()) {
                         if (!doAccept()) {
                             // If unable to pull a new connection off the accept
                             // queue, pause accepting to give us time to free
                             // up file descriptors and so the accept thread
                             // doesn't spin in a tight loop.
+                            //如果accepte失败会调用fastCloseSock()关闭连接；
+                            //调用CLOSE()方法返回后Connection立即从Accepte队列删除，需要等待
                             pauseAccept(10);
                         }
                     } else {
@@ -261,12 +265,15 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
          * selector.
          */
         private void pauseAccept(long millisecs) {
+            //设置acceptKey不注册任何事件
             acceptKey.interestOps(0);
             try {
+                //
                 selector.select(millisecs);
             } catch (IOException e) {
                 // ignore
             } finally {
+                //设置acceptKey不注册任何事件
                 acceptKey.interestOps(SelectionKey.OP_ACCEPT);
             }
         }
@@ -279,6 +286,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
          *
          * @return whether was able to accept a connection or not
          */
+        //
         private boolean doAccept() {
             boolean accepted = false;
             SocketChannel sc = null;
@@ -286,18 +294,20 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 sc = acceptSocket.accept();
                 accepted = true;
                 InetAddress ia = sc.socket().getInetAddress();
+                //获取当前IP建立的连接数
                 int cnxncount = getClientCnxnCount(ia);
-
+                //判断是否超过maxClientCnxns限制
                 if (maxClientCnxns > 0 && cnxncount >= maxClientCnxns){
                     throw new IOException("Too many connections from " + ia
                                           + " - max is " + maxClientCnxns );
                 }
-
                 LOG.debug("Accepted socket connection from "
                          + sc.socket().getRemoteSocketAddress());
+                //设置为非阻塞模式
                 sc.configureBlocking(false);
 
                 // Round-robin assign this connection to a selector thread
+                //通过轮训的方式将连接分配给selectorThread
                 if (!selectorIterator.hasNext()) {
                     selectorIterator = selectorThreads.iterator();
                 }
@@ -312,6 +322,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 // accept, maxClientCnxns, configureBlocking
                 acceptErrorLogger.rateLimitLog(
                     "Error accepting new connection: " + e.getMessage());
+                //如果失败快速关闭
                 fastCloseSock(sc);
             }
             return accepted;
@@ -462,6 +473,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             // connection
             cnxn.disableSelectable();
             key.interestOps(0);
+            //修改连接过期时间
             touchCnxn(cnxn);
             workerPool.schedule(workRequest);
         }
@@ -605,9 +617,11 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     }
 
     // ipMap is used to limit connections per IP
+    //记录每个IP所建立连接的集合，
     private final ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>> ipMap =
         new ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>>( );
 
+    //每个client建立的最大建立的最大连接数
     protected int maxClientCnxns = 60;
 
     int sessionlessCnxnTimeout;
@@ -617,7 +631,9 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     protected WorkerService workerPool;
 
     private static int directBufferBytes;
+    //selector线程数
     private int numSelectorThreads;
+    //worker线程数
     private int numWorkerThreads;
     private long workerShutdownTimeoutMS;
 
@@ -630,6 +646,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     }
 
     private volatile boolean stopped = true;
+    //过期连接清除线程
     private ConnectionExpirerThread expirerThread;
     private AcceptThread acceptThread;
     private final Set<SelectorThread> selectorThreads =
