@@ -38,16 +38,19 @@ import org.apache.zookeeper.data.StatPersisted;
  */
 public class DataNode implements Record {
     /** the data for this datanode */
+    //数据 字节数组
     byte data[];
 
     /**
      * the acl map long for this datanode. the datatree has the map
      */
+    //acl信息
     Long acl;
 
     /**
      * the stat for this node that is persisted to disk.
      */
+    //元数据
     public StatPersisted stat;
 
     /**
@@ -55,6 +58,7 @@ public class DataNode implements Record {
      * does not contain the parent path -- just the last part of the path. This
      * should be synchronized on except deserializing (for speed up issues).
      */
+    //子节点
     private Set<String> children = null;
 
     private static final Set<String> EMPTY_SET = Collections.emptySet();

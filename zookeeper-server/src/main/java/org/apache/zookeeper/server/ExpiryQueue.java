@@ -35,6 +35,7 @@ import org.apache.zookeeper.common.Time;
  * to expire connections.
  */
 public class ExpiryQueue<E> {
+    //保存所有的element；key--》元素；value：过期时间
     private final ConcurrentHashMap<E, Long> elemMap =
         new ConcurrentHashMap<E, Long>();
     /**
@@ -42,10 +43,13 @@ public class ExpiryQueue<E> {
      * so the expirationInterval should not be too small compared to the
      * max timeout that this expiry queue needs to maintain.
      */
+    //根据过期时间进行分桶保存；key--》过期时间
     private final ConcurrentHashMap<Long, Set<E>> expiryMap =
         new ConcurrentHashMap<Long, Set<E>>();
 
+    //下次过期时间
     private final AtomicLong nextExpirationTime = new AtomicLong();
+    //检测时间间隔
     private final int expirationInterval;
 
     public ExpiryQueue(int expirationInterval) {
@@ -53,6 +57,7 @@ public class ExpiryQueue<E> {
         nextExpirationTime.set(roundToNextInterval(Time.currentElapsedTime()));
     }
 
+    //更具time计算下次检测时间
     private long roundToNextInterval(long time) {
         return (time / expirationInterval + 1) * expirationInterval;
     }
@@ -84,9 +89,12 @@ public class ExpiryQueue<E> {
      * @return         time at which the element is now set to expire if
      *                 changed, or null if unchanged
      */
+    //更新元素的过期时间和进行桶的迁移
     public Long update(E elem, int timeout) {
+        //获取上次过期时间
         Long prevExpiryTime = elemMap.get(elem);
         long now = Time.currentElapsedTime();
+        //计算下次过期时间
         Long newExpiryTime = roundToNextInterval(now + timeout);
 
         if (newExpiryTime.equals(prevExpiryTime)) {
@@ -95,6 +103,7 @@ public class ExpiryQueue<E> {
         }
 
         // First add the elem to the new expiry time bucket in expiryMap.
+        //桶迁移
         Set<E> set = expiryMap.get(newExpiryTime);
         if (set == null) {
             // Construct a ConcurrentHashSet using a ConcurrentHashMap
@@ -111,7 +120,9 @@ public class ExpiryQueue<E> {
 
         // Map the elem to the new expiry time. If a different previous
         // mapping was present, clean up the previous expiry bucket.
+        //更新elemMap中元素过期时间
         prevExpiryTime = elemMap.put(elem, newExpiryTime);
+        //删除旧桶中元素
         if (prevExpiryTime != null && !newExpiryTime.equals(prevExpiryTime)) {
             Set<E> prevSet = expiryMap.get(prevExpiryTime);
             if (prevSet != null) {
@@ -124,6 +135,7 @@ public class ExpiryQueue<E> {
     /**
      * @return milliseconds until next expiration time, or 0 if has already past
      */
+    //获取等待时间
     public long getWaitTime() {
         long now = Time.currentElapsedTime();
         long expirationTime = nextExpirationTime.get();
@@ -138,6 +150,7 @@ public class ExpiryQueue<E> {
      * @return next set of expired elements, or an empty set if none are
      *         ready
      */
+    //删除过期的元素并更新newExpirationTime
     public Set<E> poll() {
         long now = Time.currentElapsedTime();
         long expirationTime = nextExpirationTime.get();

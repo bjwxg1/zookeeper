@@ -94,18 +94,20 @@ public class DataTree {
     private final ConcurrentHashMap<String, DataNode> nodes =
         new ConcurrentHashMap<String, DataNode>();
 
-    //WatchManager
+    //dataWatchManager和childWatcheManager
     private IWatchManager dataWatches;
     private IWatchManager childWatches;
 
     /** cached total size of paths and data for all DataNodes */
+    //记录path和data的数据总大小
     private final AtomicLong nodeDataSize = new AtomicLong(0);
 
     /** the root of zookeeper tree */
-    //rootPath
+    //根节点路径
     private static final String rootZookeeper = "/";
 
     /** the zookeeper nodes that acts as the management and status node **/
+    //管理和状态节点
     private static final String procZookeeper = Quotas.procZookeeper;
 
     /** this will be the string thats stored as a child of root */
@@ -115,6 +117,7 @@ public class DataTree {
      * the zookeeper quota node that acts as the quota management node for
      * zookeeper
      */
+    //ZooKeeper quota节点，作为ZooKeeper的配额管理节点
     private static final String quotaZookeeper = Quotas.quotaZookeeper;
 
     /** this will be the string thats stored as a child of /zookeeper */
@@ -125,6 +128,7 @@ public class DataTree {
      * the zookeeper config node that acts as the config management node for
      * zookeeper
      */
+    //config管理节点
     private static final String configZookeeper = ZooDefs.CONFIG_NODE;
 
     /** this will be the string thats stored as a child of /zookeeper */
@@ -134,6 +138,7 @@ public class DataTree {
     /**
      * the path trie that keeps track of the quota nodes in this datatree
      */
+    //path trie跟踪在DataTree中的quota节点
     private final PathTrie pTrie = new PathTrie();
 
     /**

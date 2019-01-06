@@ -93,16 +93,16 @@ import org.slf4j.LoggerFactory;
 public class FileTxnLog implements TxnLog {
     private static final Logger LOG;
 
+    //事务日志文件FileHeader的魔数
     public final static int TXNLOG_MAGIC =
         ByteBuffer.wrap("ZKLG".getBytes()).getInt();
-
+    //版本
     public final static int VERSION = 2;
-
+    //日志文件前缀
     public static final String LOG_FILE_PREFIX = "log";
 
     static final String FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "fsync.warningthresholdms";
     static final String ZOOKEEPER_FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "zookeeper." + FSYNC_WARNING_THRESHOLD_MS_PROPERTY;
-
     /** Maximum time we allow for elapsed fsync before WARNing */
     private final static long fsyncWarningThresholdMS;
 
@@ -139,23 +139,24 @@ public class FileTxnLog implements TxnLog {
             txnLogSizeLimit = logSize;
         }
     }
-
+    //最新事务ID
     long lastZxidSeen;
     volatile BufferedOutputStream logStream = null;
     volatile OutputArchive oa;
     volatile FileOutputStream fos = null;
 
+    //日志文件目录
     File logDir;
     //配置是否在事务提交进行强制刷盘操作。默认为True
     private final boolean forceSync = !System.getProperty("zookeeper.forceSync", "yes").equals("no");
     long dbId;
+    //待写入的流
     private LinkedList<FileOutputStream> streamsToFlush =
         new LinkedList<FileOutputStream>();
     File logFileWrite = null;
     private FilePadding filePadding = new FilePadding();
-
+    //文件预分配时填充
     private ServerStats serverStats;
-
     private volatile long syncElapsedMS = -1L;
 
     /**

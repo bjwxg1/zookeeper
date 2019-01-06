@@ -62,6 +62,10 @@ import org.slf4j.LoggerFactory;
  * committed logs. It is booted up  after reading the logs
  * and snapshots from the disk.
  */
+//ZKDatabase在内存中维护了zookeeper的sessions， datatree和commit logs集合。
+//当zookeeper server启动的时候会将txnlogs和snapshots从磁盘读取到内存中
+//同时ZKDatabase会定时向磁盘dump快照数据，在Zookeeper服务器启动时，会通过
+//磁盘上的事务日志和快照数据文件恢复生成一个完成的内存数据
 public class ZKDatabase {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKDatabase.class);
@@ -73,7 +77,7 @@ public class ZKDatabase {
     protected DataTree dataTree;
     //保存Session信息
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
-    //committed log
+    //用于事务日志文件和快照文件操作
     protected FileTxnSnapLog snapLog;
     protected long minCommittedLog, maxCommittedLog;
 
@@ -86,6 +90,7 @@ public class ZKDatabase {
 
     public static final int commitLogCount = 500;
     protected static int commitLogBuffer = 700;
+    //提交的事务
     protected LinkedList<Proposal> committedLog = new LinkedList<Proposal>();
     protected ReentrantReadWriteLock logLock = new ReentrantReadWriteLock();
     volatile private boolean initialized = false;
