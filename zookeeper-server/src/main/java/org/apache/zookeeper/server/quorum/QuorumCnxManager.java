@@ -141,13 +141,17 @@ public class QuorumCnxManager {
     /*
      * Mapping from Peer to Thread number
      */
+    //为每一个节点定义一个SendWorker
     final ConcurrentHashMap<Long, SendWorker> senderWorkerMap;
+    //为每一个server节点保存一个发送消息队列
     final ConcurrentHashMap<Long, ArrayBlockingQueue<ByteBuffer>> queueSendMap;
+    //为每一个server节点保存最近发送的消息
     final ConcurrentHashMap<Long, ByteBuffer> lastMessageSent;
 
     /*
      * Reception queue
      */
+    //本节点的接受消息队列
     public final ArrayBlockingQueue<Message> recvQueue;
     /*
      * Object to synchronize access to recvQueue
@@ -163,6 +167,7 @@ public class QuorumCnxManager {
     /*
      * Listener thread
      */
+    //监听线程，监听来自其他节点的连接信息
     public final Listener listener;
 
     /*
@@ -420,6 +425,7 @@ public class QuorumCnxManager {
             // Sending id and challenge
 
             // represents protocol version (in other words - message type)
+            //发送连接数据
             dout.writeLong(PROTOCOL_VERSION);
             dout.writeLong(self.getId());
             String addr = formatInetAddr(self.getElectionAddress());
@@ -450,19 +456,22 @@ public class QuorumCnxManager {
             closeSocket(sock);
             // Otherwise proceed with the connection
         } else {
+            //创建SendWorker和RecvWorker
             SendWorker sw = new SendWorker(sock, sid);
             RecvWorker rw = new RecvWorker(sock, din, sid, sw);
             sw.setRecv(rw);
 
+            //如果senderWorkerMap已经存在SendWorker，将其数据发送完毕
             SendWorker vsw = senderWorkerMap.get(sid);
-
             if(vsw != null)
                 vsw.finish();
 
+            //添加到senderWorkerMap
             senderWorkerMap.put(sid, sw);
             queueSendMap.putIfAbsent(sid, new ArrayBlockingQueue<ByteBuffer>(
                         SEND_CAPACITY));
 
+            //启动SendWorker和RecvWorker
             sw.start();
             rw.start();
 
@@ -483,6 +492,7 @@ public class QuorumCnxManager {
     public void receiveConnection(final Socket sock) {
         DataInputStream din = null;
         try {
+            //创建输入流
             din = new DataInputStream(
                     new BufferedInputStream(sock.getInputStream()));
 
@@ -532,6 +542,7 @@ public class QuorumCnxManager {
         InetSocketAddress electionAddr = null;
 
         try {
+            //读取protocolVersion
             protocolVersion = din.readLong();
             if (protocolVersion >= 0) { // this is a server id and not a protocol version
                 sid = protocolVersion;
@@ -547,6 +558,7 @@ public class QuorumCnxManager {
                 }
             }
 
+            //判断是否是OBSERVER_ID
             if (sid == QuorumPeer.OBSERVER_ID) {
                 /*
                  * Choose identifier at random. We need a value to identify
@@ -564,12 +576,16 @@ public class QuorumCnxManager {
         // do authenticating learner
         authServer.authenticate(sock, din);
         //If wins the challenge, then close the new connection.
+        //如果sid小于当前server的myid则需要关闭已经建立的socket连接
+        //Zookeeper server集群中所有的机器都会启动选举监听端口，并且两两建立连接
+        //如果减少建立的连接数，默认myid大的机器作为client连接到myid小的机器上
         if (sid < self.getId()) {
             /*
              * This replica might still believe that the connection to sid is
              * up, so we have to shut down the workers before trying to open a
              * new connection.
              */
+            //如果sender不为空，将数据发送出去
             SendWorker sw = senderWorkerMap.get(sid);
             if (sw != null) {
                 sw.finish();
@@ -578,16 +594,18 @@ public class QuorumCnxManager {
             /*
              * Now we start a new connection
              */
+            //关闭对端连接
             LOG.debug("Create new connection to server: {}", sid);
             closeSocket(sock);
-
+            //创建到对端的连接
             if (electionAddr != null) {
                 connectOne(sid, electionAddr);
             } else {
                 connectOne(sid);
             }
 
-        } else { // Otherwise start worker threads to receive data.
+        } else {
+            //如果sid大于等于当前server的myid，则创建SendWorker和RecvWorker并启动
             SendWorker sw = new SendWorker(sock, sid);
             RecvWorker rw = new RecvWorker(sock, din, sid, sw);
             sw.setRecv(rw);
@@ -661,6 +679,7 @@ public class QuorumCnxManager {
                 sslSock.startHandshake();
                 sock = sslSock;
             } else {
+                //创建并进行连接
                 sock = new Socket();
                 setSockOpts(sock);
                 sock.connect(electionAddr, cnxTO);
@@ -673,6 +692,7 @@ public class QuorumCnxManager {
             if (quorumSaslAuthEnabled) {
                 initiateConnectionAsync(sock, sid);
             } else {
+                //初始化连接信息
                 initiateConnection(sock, sid);
             }
             return true;
@@ -855,7 +875,7 @@ public class QuorumCnxManager {
      * Thread to listen on some port
      */
     public class Listener extends ZooKeeperThread {
-
+        //服务器端的socket
         volatile ServerSocket ss = null;
 
         public Listener() {
@@ -869,12 +889,14 @@ public class QuorumCnxManager {
          */
         @Override
         public void run() {
+            //启动Zookeeper server节点监听端口的重试次数
             int numRetries = 0;
             InetSocketAddress addr;
             Socket client = null;
             Exception exitException = null;
             while((!shutdown) && (numRetries < 3)){
                 try {
+                    //创建serverSocket
                     if (self.shouldUsePortUnification()) {
                         ss = new UnifiedServerSocket(x509Util);
                     } else if (self.isSslQuorum()) {
@@ -882,7 +904,6 @@ public class QuorumCnxManager {
                     } else {
                         ss = new ServerSocket();
                     }
-
                     ss.setReuseAddress(true);
 
                     if (self.getQuorumListenOnAllIPs()) {
@@ -896,10 +917,13 @@ public class QuorumCnxManager {
                     }
                     LOG.info("My election bind port: " + addr.toString());
                     setName(addr.toString());
+                    //绑定
                     ss.bind(addr);
                     while (!shutdown) {
                         try {
+                            //接受其他server选举端口的连接
                             client = ss.accept();
+                            //设置client参数
                             setSockOpts(client);
                             LOG.info("Received connection request "
                                      + formatInetAddr((InetSocketAddress)client.getRemoteSocketAddress()));
@@ -911,6 +935,7 @@ public class QuorumCnxManager {
                             if (quorumSaslAuthEnabled) {
                                 receiveConnectionAsync(client);
                             } else {
+                                //处理非验证方式的连接信息
                                 receiveConnection(client);
                             }
                             numRetries = 0;
@@ -929,6 +954,7 @@ public class QuorumCnxManager {
                     numRetries++;
                     try {
                         ss.close();
+                        //sleep 1000毫秒进行重试
                         Thread.sleep(1000);
                     } catch (IOException ie) {
                         LOG.error("Error closing server socket", ie);
@@ -984,7 +1010,9 @@ public class QuorumCnxManager {
      * soon as there is one available. If connection breaks, then opens a new
      * one.
      */
+    //消息发送线程
     class SendWorker extends ZooKeeperThread {
+        //对端服务器myid
         Long sid;
         Socket sock;
         RecvWorker recvWorker;

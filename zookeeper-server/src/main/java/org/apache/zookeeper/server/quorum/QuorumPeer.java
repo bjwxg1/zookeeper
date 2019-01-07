@@ -934,6 +934,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     synchronized public void startLeaderElection() {
         try {
             if (getPeerState() == ServerState.LOOKING) {
+                //根据myid，最近事务ID和当前Epoch初始化选票
+                //将选票投给自己
                 currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
             }
         } catch(IOException e) {
@@ -1051,8 +1053,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             qcm = createCnxnManager();
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
+                //启动连接监听线程
                 listener.start();
+                //创建FastLeaderElection并启动
                 FastLeaderElection fle = new FastLeaderElection(this, qcm);
+                //启动FastLeaderElection
                 fle.start();
                 le = fle;
             } else {

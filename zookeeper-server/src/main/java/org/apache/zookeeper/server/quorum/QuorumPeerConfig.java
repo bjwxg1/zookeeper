@@ -98,6 +98,7 @@ public class QuorumPeerConfig {
     //默认5，表示是tickTime的5倍；该参数主要用于设置Leader和Follower之间心跳的最大延时，如果超过这个时间则表明Follower和Leader脱离同步；
     protected int syncLimit;
     protected int electionAlg = 3;
+    //默认选举端口
     protected int electionPort = 2182;
     protected boolean quorumListenOnAllIPs = false;
 
@@ -109,7 +110,7 @@ public class QuorumPeerConfig {
     //配置快照和日志文件清除的频率，如果为负表示不开启
     protected int purgeInterval = 0;
     protected boolean syncEnabled = true;
-
+    //类型
     protected LearnerType peerType = LearnerType.PARTICIPANT;
 
     /**
