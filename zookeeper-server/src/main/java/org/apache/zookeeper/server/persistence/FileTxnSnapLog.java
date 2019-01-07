@@ -211,19 +211,23 @@ public class FileTxnSnapLog {
      */
     public long restore(DataTree dt, Map<Long, Integer> sessions,
                         PlayBackListener listener) throws IOException {
+        //先从快照文件加载磁盘数据到内存
         long deserializeResult = snapLog.deserialize(dt, sessions);
         FileTxnLog txnLog = new FileTxnLog(dataDir);
         boolean trustEmptyDB;
         File initFile = new File(dataDir.getParent(), "initialize");
+        //判断是否存在Initialize file
         if (Files.deleteIfExists(initFile.toPath())) {
             LOG.info("Initialize file found, an empty database will not block voting participation");
             trustEmptyDB = true;
         } else {
             trustEmptyDB = autoCreateDB;
         }
+        //如果从快照文件没有加载到数据
         if (-1L == deserializeResult) {
             /* this means that we couldn't find any snapshot, so we need to
              * initialize an empty database (reported in ZOOKEEPER-2325) */
+            //如果从快照文件没有加载到数据，判断事务日志文件中lastLoggedZxid是否为-1
             if (txnLog.getLastLoggedZxid() != -1) {
                 throw new IOException(
                         "No snapshot found, but there are log entries. " +
@@ -233,6 +237,7 @@ public class FileTxnSnapLog {
             if (trustEmptyDB) {
                 /* TODO: (br33d) we should either put a ConcurrentHashMap on restore()
                  *       or use Map on save() */
+                //将dataTree和Session保存到日志文件
                 save(dt, (ConcurrentHashMap<Long, Integer>)sessions, false);
 
                 /* return a zxid of 0, since we know the database is empty */
@@ -244,6 +249,7 @@ public class FileTxnSnapLog {
                 return -1L;
             }
         }
+        //开始进行事务日志回放操作
         return fastForwardFromEdits(dt, sessions, listener);
     }
 
@@ -260,6 +266,7 @@ public class FileTxnSnapLog {
      */
     public long fastForwardFromEdits(DataTree dt, Map<Long, Integer> sessions,
                                      PlayBackListener listener) throws IOException {
+        //lastProcessedZxid+1处开始对日志进行回放
         TxnIterator itr = txnLog.read(dt.lastProcessedZxid+1);
         long highestZxid = dt.lastProcessedZxid;
         TxnHeader hdr;
@@ -267,6 +274,7 @@ public class FileTxnSnapLog {
             while (true) {
                 // iterator points to
                 // the first valid txn when initialized
+                //如果hdr为空说明处理完毕
                 hdr = itr.getHeader();
                 if (hdr == null) {
                     //empty logs
@@ -279,11 +287,13 @@ public class FileTxnSnapLog {
                     highestZxid = hdr.getZxid();
                 }
                 try {
+                    //将事务日志操作重放进内存
                     processTransaction(hdr,dt,sessions, itr.getTxn());
                 } catch(KeeperException.NoNodeException e) {
                    throw new IOException("Failed to process transaction type: " +
                          hdr.getType() + " error: " + e.getMessage(), e);
                 }
+                //将重放的事务日志添加到committedLog用于Follower同步
                 listener.onTxnLoaded(hdr, itr.getTxn());
                 if (!itr.next())
                     break;
@@ -335,6 +345,7 @@ public class FileTxnSnapLog {
         throws KeeperException.NoNodeException {
         ProcessTxnResult rc;
         switch (hdr.getType()) {
+            //如果是createSession则添加到sessions
         case OpCode.createSession:
             sessions.put(hdr.getClientId(),
                     ((CreateSessionTxn) txn).getTimeOut());
@@ -349,6 +360,7 @@ public class FileTxnSnapLog {
             rc = dt.processTxn(hdr, txn);
             break;
         case OpCode.closeSession:
+            //如果是createSession则删除session
             sessions.remove(hdr.getClientId());
             if (LOG.isTraceEnabled()) {
                 ZooTrace.logTraceMessage(LOG,ZooTrace.SESSION_TRACE_MASK,

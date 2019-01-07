@@ -88,6 +88,7 @@ public class ZKDatabase {
     public static final double DEFAULT_SNAPSHOT_SIZE_FACTOR = 0.33;
     private double snapshotSizeFactor;
 
+    //
     public static final int commitLogCount = 500;
     protected static int commitLogBuffer = 700;
     //提交的事务
@@ -253,6 +254,10 @@ public class ZKDatabase {
      */
     public long loadDataBase() throws IOException {
         long startTime = Time.currentElapsedTime();
+        //调用snapLog.restore()方法加载数据到dataTree、sessionsWithTimeouts，
+        //并通过commitProposalPlaybackListener进行事件回放
+        //加载数据是先从快照文件加载数据，然后在从事务日志文件加载
+        //对于事务日志文件加载需要对事务操作进行重放，重放操作就是基于commitProposalPlaybackListener完成
         long zxid = snapLog.restore(dataTree, sessionsWithTimeouts, commitProposalPlaybackListener);
         initialized = true;
         long loadTime = Time.currentElapsedTime() - startTime;
