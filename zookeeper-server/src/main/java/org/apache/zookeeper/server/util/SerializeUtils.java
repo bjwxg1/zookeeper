@@ -147,10 +147,12 @@ public class SerializeUtils {
             Map<Long, Integer> sessions) throws IOException {
         HashMap<Long, Integer> sessSnap = new HashMap<Long, Integer>(sessions);
         oa.writeInt(sessSnap.size(), "count");
+        //循环写入session信息
         for (Entry<Long, Integer> entry : sessSnap.entrySet()) {
             oa.writeLong(entry.getKey().longValue(), "id");
             oa.writeInt(entry.getValue().intValue(), "timeout");
         }
+        //写入dataTree
         dt.serialize(oa, "tree");
     }
 

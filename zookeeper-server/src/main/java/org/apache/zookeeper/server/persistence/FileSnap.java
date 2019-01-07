@@ -209,6 +209,7 @@ public class FileSnap implements SnapShot {
         if(header==null)
             throw new IllegalStateException(
                     "Snapshot's not open for writing: uninitialized header");
+        //写入FileHeader
         header.serialize(oa, "fileheader");
         SerializeUtils.serializeSnapshot(dt,oa,sessions);
     }
@@ -229,9 +230,12 @@ public class FileSnap implements SnapShot {
                                                  new Adler32())) {
                 //CheckedOutputStream cout = new CheckedOutputStream()
                 OutputArchive oa = BinaryOutputArchive.getArchive(crcOut);
+                //创建FileHeader
                 FileHeader header = new FileHeader(SNAP_MAGIC, VERSION, dbId);
                 serialize(dt, sessions, oa, header);
+                //生成校验和
                 long val = crcOut.getChecksum().getValue();
+                //写入校验值
                 oa.writeLong(val, "val");
                 oa.writeString("/", "path");
                 crcOut.flush();

@@ -44,6 +44,7 @@ public class FilePadding {
         }
     }
 
+    //当前文件大小
     private long currentSize;
 
     /**
@@ -73,9 +74,12 @@ public class FilePadding {
      * @param fileChannel the fileChannel of the file to be padded
      * @throws IOException
      */
+    //计算扩容后文件的大小，并使用0填充。返回新的文件大小
     long padFile(FileChannel fileChannel) throws IOException {
+        //计算新的文件大小
         long newFileSize = calculateFileSizeWithPadding(fileChannel.position(), currentSize, preAllocSize);
         if (currentSize != newFileSize) {
+            //使用0进行扩容
             fileChannel.write((ByteBuffer) fill.position(0), newFileSize - fill.remaining());
             currentSize = newFileSize;
         }
@@ -95,11 +99,14 @@ public class FilePadding {
      * @throws IOException
      */
     // VisibleForTesting
+    //计算新文件size(包含了padding的大小)
     public static long calculateFileSizeWithPadding(long position, long fileSize, long preAllocSize) {
         // If preAllocSize is positive and we are within 4KB of the known end of the file calculate a new file size
+        //剩余的空间小于4KB开始扩容
         if (preAllocSize > 0 && position + 4096 >= fileSize) {
             // If we have written more than we have previously preallocated we need to make sure the new
             // file size is larger than what we already have
+            //如果已经写入的空间超过上次预分配空间需要保证新分配的空间大于已经使用的空间
             if (position > fileSize) {
                 fileSize = position + preAllocSize;
                 fileSize -= fileSize % preAllocSize;
@@ -107,7 +114,6 @@ public class FilePadding {
                 fileSize += preAllocSize;
             }
         }
-
         return fileSize;
     }
 }

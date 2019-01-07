@@ -104,6 +104,7 @@ public class FileTxnLog implements TxnLog {
     static final String FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "fsync.warningthresholdms";
     static final String ZOOKEEPER_FSYNC_WARNING_THRESHOLD_MS_PROPERTY = "zookeeper." + FSYNC_WARNING_THRESHOLD_MS_PROPERTY;
     /** Maximum time we allow for elapsed fsync before WARNing */
+    //强制刷盘操作耗时警告阈值，默认1000ms
     private final static long fsyncWarningThresholdMS;
 
     /**
@@ -114,11 +115,13 @@ public class FileTxnLog implements TxnLog {
      * this limit by the maximum size of a serialized transaction.
      * The feature is disabled by default (-1)
      */
+    //
     private static final String txnLogSizeLimitSetting = "zookeeper.txnLogSizeLimitInKb";
 
     /**
      * The actual txnlog size limit in bytes.
      */
+    //设置事务日志文件大小
     private static long txnLogSizeLimit = -1;
 
     static {
@@ -128,6 +131,7 @@ public class FileTxnLog implements TxnLog {
         Long fsyncWarningThreshold;
         if ((fsyncWarningThreshold = Long.getLong(ZOOKEEPER_FSYNC_WARNING_THRESHOLD_MS_PROPERTY)) == null)
             fsyncWarningThreshold = Long.getLong(FSYNC_WARNING_THRESHOLD_MS_PROPERTY, 1000);
+        //
         fsyncWarningThresholdMS = fsyncWarningThreshold;
 
         Long logSize = Long.getLong(txnLogSizeLimitSetting, -1);
@@ -154,9 +158,11 @@ public class FileTxnLog implements TxnLog {
     private LinkedList<FileOutputStream> streamsToFlush =
         new LinkedList<FileOutputStream>();
     File logFileWrite = null;
-    private FilePadding filePadding = new FilePadding();
     //文件预分配时填充
+    private FilePadding filePadding = new FilePadding();
+    //记录Server运行过程中的基本统计信息
     private ServerStats serverStats;
+    //强制刷新操作耗时时间
     private volatile long syncElapsedMS = -1L;
 
     /**
@@ -243,12 +249,15 @@ public class FileTxnLog implements TxnLog {
      * @param txn the transaction part of the entry
      * returns true iff something appended, otw false
      */
+    //日志写入操作
+    //需要注意的是此时并没有真正的数据写入到文件，只是添加到streamsToFlush(需要强制落盘的文件流)
     public synchronized boolean append(TxnHeader hdr, Record txn)
         throws IOException
     {
         if (hdr == null) {
             return false;
         }
+        //如果需要写入的事务日志的Zxid小于lastZxidSeen说明已经写入
         if (hdr.getZxid() <= lastZxidSeen) {
             LOG.warn("Current zxid " + hdr.getZxid()
                     + " is <= " + lastZxidSeen + " for "
@@ -264,6 +273,7 @@ public class FileTxnLog implements TxnLog {
            }
 
            //创建新的日志文件并和输出流相关联
+            //新创建的日志文件文件名包含了第一个需要写入的事务日志的zxid
            logFileWrite = new File(logDir, Util.makeLogName(hdr.getZxid()));
            fos = new FileOutputStream(logFileWrite);
            logStream=new BufferedOutputStream(fos);
@@ -273,13 +283,14 @@ public class FileTxnLog implements TxnLog {
            FileHeader fhdr = new FileHeader(TXNLOG_MAGIC,VERSION, dbId);
            fhdr.serialize(oa, "fileheader");
            // Make sure that the magic number is written before padding.
+            //将fhdr写入到文件
            logStream.flush();
            filePadding.setCurrentSize(fos.getChannel().position());
            //添加到streamList
            streamsToFlush.add(fos);
         }
         //文件预分配，并使用0补齐
-        //通过文件预分配操作来避磁盘的随机访问增加问价写效率
+        //通过文件预分配操作来避磁盘的随机访问增加文件写操作效率
         filePadding.padFile(fos.getChannel());
         //序列化
         byte[] buf = Util.marshallTxnEntry(hdr, txn);
@@ -292,9 +303,8 @@ public class FileTxnLog implements TxnLog {
         crc.update(buf, 0, buf.length);
         //写入校验和
         oa.writeLong(crc.getValue(), "txnEntryCRC");
-        //写入事务
+        //写入事务和尾部表示
         Util.writeTxnBytes(oa, buf);
-
         return true;
     }
 
@@ -306,12 +316,13 @@ public class FileTxnLog implements TxnLog {
      * @param snapshotZxid return files at, or before this zxid
      * @return
      */
+    //根据snapshotZxid和logDirList获取文件名中zxid小于snapshotZxid的文件集合
     public static File[] getLogFiles(File[] logDirList,long snapshotZxid) {
         List<File> files = Util.sortDataDir(logDirList, LOG_FILE_PREFIX, true);
         long logZxid = 0;
         // Find the log file that starts before or at the same time as the
         // zxid of the snapshot
-        //获取zxid<=的事务日志文件
+        //获取zxid<=snapshotZxid的事务日志文件
         for (File f : files) {
             long fzxid = Util.getZxidFromName(f.getName(), LOG_FILE_PREFIX);
             if (fzxid > snapshotZxid) {
@@ -339,6 +350,7 @@ public class FileTxnLog implements TxnLog {
      * get the last zxid that was logged in the transaction logs
      * @return the last zxid logged in the transaction logs
      */
+    //获取最后一个写入事务日志文件的zxid
     public long getLastLoggedZxid() {
         File[] files = getLogFiles(logDir.listFiles(), 0);
         long maxLog=files.length>0?
@@ -348,6 +360,7 @@ public class FileTxnLog implements TxnLog {
         // the highest zxid
         long zxid = maxLog;
         TxnIterator itr = null;
+        //遍历事务日志文件直到最后一个事务并获取ZXID
         try {
             FileTxnLog txn = new FileTxnLog(logDir);
             itr = txn.read(maxLog);
@@ -391,10 +404,12 @@ public class FileTxnLog implements TxnLog {
                 long startSyncNS = System.nanoTime();
 
                 FileChannel channel = log.getChannel();
+                //强制刷新到磁盘
                 channel.force(false);
 
                 //强制刷新耗时
                 syncElapsedMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startSyncNS);
+                //如果刷新耗时大于fsyncWarningThresholdMS进行报警
                 if (syncElapsedMS > fsyncWarningThresholdMS) {
                     if(serverStats != null) {
                         serverStats.incrementFsyncThresholdExceedCount();
@@ -417,7 +432,7 @@ public class FileTxnLog implements TxnLog {
         // Roll the log file if we exceed the size limit
         if(txnLogSizeLimit > 0) {
             long logSize = getCurrentLogSize();
-            //如果logSize大于txnLogSizeLimit，进行日志文件roll操作
+            //如果logSize大于txnLogSizeLimit，进行日志文件rollLog操作
             if (logSize > txnLogSizeLimit) {
                 LOG.debug("Log size limit reached: {}", logSize);
                 rollLog();
