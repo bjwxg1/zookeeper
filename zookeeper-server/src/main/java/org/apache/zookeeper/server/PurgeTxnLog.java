@@ -76,14 +76,12 @@ public class PurgeTxnLog {
         if (num < 3) {
             throw new IllegalArgumentException(COUNT_ERR_MSG);
         }
-
         FileTxnSnapLog txnLog = new FileTxnSnapLog(dataDir, snapDir);
-
         //获取最新的num个文件
         List<File> snaps = txnLog.findNRecentSnapshots(num);
         int numSnaps = snaps.size();
         if (numSnaps > 0) {
-            //调用方法删除snapShot和事务日志文件
+            //调用方法删除旧的文件
             purgeOlderSnapshots(txnLog, snaps.get(numSnaps - 1));
         }
     }
@@ -96,8 +94,10 @@ public class PurgeTxnLog {
 
         //此处需要注意的是的snapShot是快照日志文件，根据snapShot文件可以获取leastZxidToBeRetain
         //对于快照文件zxid小于leastZxidToBeRetain都可以删除；
-        //但是对于事务日志文件zxid小于leastZxidToBeRetain不一定可以删除，因为这个事务日志文件保存的事务的id可能比leastZxidToBeRetain大
-        //所以为了保证在服务器宕机的情况下是否可以完全恢复需要准确判断事务日志文件是否可以删除
+        //但是对于事务日志文件zxid小于leastZxidToBeRetain不一定可以删除，
+        //因为这个事务日志文件保存的事务的id可能比leastZxidToBeRetain大
+        //所以为了保证在服务器宕机的情况下是否可以完全恢复
+        // 需要准确判断事务日志文件是否可以删除
         /**
          * We delete all files with a zxid in their name that is less than leastZxidToBeRetain.
          * This rule applies to both snapshot files as well as log files, with the following

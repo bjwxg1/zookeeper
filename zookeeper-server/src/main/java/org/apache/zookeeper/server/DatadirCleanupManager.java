@@ -44,18 +44,15 @@ public class DatadirCleanupManager {
         NOT_STARTED, STARTED, COMPLETED;
     }
 
+    //任务状态
     private PurgeTaskStatus purgeTaskStatus = PurgeTaskStatus.NOT_STARTED;
-
     private final File snapDir;
-
     private final File dataLogDir;
-
-    //日志文件和快照文件保留个数
+    //快照文件保留个数
     private final int snapRetainCount;
-    //线程运行的频率
+    //线程运行的时间间隔
     private final int purgeInterval;
-
-    //定时器
+    //定时器，用户任务调度
     private Timer timer;
 
     /**
@@ -111,7 +108,6 @@ public class DatadirCleanupManager {
         //创建PurgeTask
         TimerTask task = new PurgeTask(dataLogDir, snapDir, snapRetainCount);
         timer.scheduleAtFixedRate(task, 0, TimeUnit.HOURS.toMillis(purgeInterval));
-
         //设置任务状态为STARTED
         purgeTaskStatus = PurgeTaskStatus.STARTED;
     }
