@@ -183,6 +183,7 @@ public class QuorumPeerMain {
           //创建quorumPeer
           quorumPeer = getQuorumPeer();
           quorumPeer.setRootMetricsContext(metricsProvider.getRootContext());
+          //创建并设置FileTxnSnapLog，FileTxnSnapLog作为中间层提供Zookeeper对底层日志的访问和操作
           quorumPeer.setTxnFactory(new FileTxnSnapLog(
                       config.getDataLogDir(),
                       config.getDataDir()));
@@ -199,11 +200,14 @@ public class QuorumPeerMain {
           quorumPeer.setInitLimit(config.getInitLimit());
           quorumPeer.setSyncLimit(config.getSyncLimit());
           quorumPeer.setConfigFileName(config.getConfigFilename());
+          //创建并设置ZKDataBase
           quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
           quorumPeer.setQuorumVerifier(config.getQuorumVerifier(), false);
+          //设置集群验证器，主要用于判断配置是否能构成集群
           if (config.getLastSeenQuorumVerifier()!=null) {
               quorumPeer.setLastSeenQuorumVerifier(config.getLastSeenQuorumVerifier(), false);
           }
+          //将集群的配置信息添加到Zookeeper config节点
           quorumPeer.initConfigInZKDatabase();
           quorumPeer.setCnxnFactory(cnxnFactory);
           quorumPeer.setSecureCnxnFactory(secureCnxnFactory);
