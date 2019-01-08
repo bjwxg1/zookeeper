@@ -918,6 +918,7 @@ public class FastLeaderElection implements Election {
      * sends notifications to all other peers.
      */
     public Vote lookForLeader() throws InterruptedException {
+        //注册监控信息
         try {
             self.jmxLeaderElectionBean = new LeaderElectionBean();
             MBeanRegistry.getInstance().register(
@@ -930,13 +931,14 @@ public class FastLeaderElection implements Election {
             //记录开始选举时间
            self.start_fle = Time.currentElapsedTime();
         }
+
         try {
+            //保存收到的其他机器的选票信息
+            //key-->机器的myid;vote-->选票信息
             Map<Long, Vote> recvset = new HashMap<Long, Vote>();
-
             Map<Long, Vote> outofelection = new HashMap<Long, Vote>();
-
             int notTimeout = finalizeWait;
-
+            //第一次投票时会将选票投给自己
             synchronized(this){
                 //增加逻辑时钟
                 logicalclock.incrementAndGet();
@@ -948,7 +950,6 @@ public class FastLeaderElection implements Election {
                     ", proposed zxid=0x" + Long.toHexString(proposedZxid));
             //将自己的投票信息发送给所有的参与选举的机器
             sendNotifications();
-
             SyncedLearnerTracker voteSet;
 
             /*
@@ -961,10 +962,8 @@ public class FastLeaderElection implements Election {
                  * Remove next notification from queue, times out after 2 times
                  * the termination time
                  */
-                //从recvqueue获取Notification
-                Notification n = recvqueue.poll(notTimeout,
-                        TimeUnit.MILLISECONDS);
-
+                //从recvqueue获取其他机器的投票信息[Notification]
+                Notification n = recvqueue.poll(notTimeout, TimeUnit.MILLISECONDS);
                 /*
                  * Sends more notifications if haven't received enough.
                  * Otherwise processes new notification.
@@ -981,6 +980,7 @@ public class FastLeaderElection implements Election {
                     /*
                      * Exponential backoff
                      */
+                    //增加timeout时间
                     int tmpTimeOut = notTimeout*2;
                     notTimeout = (tmpTimeOut < maxNotificationInterval?
                             tmpTimeOut : maxNotificationInterval);
@@ -1007,7 +1007,7 @@ public class FastLeaderElection implements Election {
                         //重设当前机器的logicalclock为notification的electionEpoch，
                         if (n.electionEpoch > logicalclock.get()) {
                             logicalclock.set(n.electionEpoch);
-                            //并清空已经收到的选票
+                            //并清空已经收到的选票【因为已经不再一个选举epoch，认为之前收到的选票都是无效的】
                             recvset.clear();
                             //判断是否需要更新自己的投票
                             if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,
@@ -1049,6 +1049,7 @@ public class FastLeaderElection implements Election {
                                 recvset, new Vote(proposedLeader, proposedZxid,
                                         logicalclock.get(), proposedEpoch));
 
+                        //判断是否达到半数以上
                         if (voteSet.hasAllQuorums()) {
 
                             // Verify if there is any change in the proposed leader
