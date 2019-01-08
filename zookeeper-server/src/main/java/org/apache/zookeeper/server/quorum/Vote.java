@@ -86,12 +86,12 @@ public class Vote {
     final private int version;
     //被推举为leader的机器的myid
     final private long id;
-    //被选举server的事务ID
+    //被推举为leader的机器最大的事务ID
     final private long zxid;
     //逻辑适时钟，用来判断多个投票是否在同一个选举周期中。
     //该值在服务器端时一个自增序列。每次进入新一轮的投票后，都会对该值 + 1。
     final private long electionEpoch;
-    //被推举 Leader 的server的epoch。
+    //被推举Leader的机器的epoch。
     final private long peerEpoch;
     
     public int getVersion() {

@@ -191,6 +191,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             this.electionAddr = new InetSocketAddress(address, port);
         }
 
+        //设置节点类型
         private void setType(String s) throws ConfigException {
             if (s.toLowerCase().equals("observer")) {
                type = LearnerType.OBSERVER;
@@ -402,12 +403,13 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      * at least for QuorumCnxManager. We use the following constant to as the
      * value of such a generic identifier.
      */
-
+    //observer可以不配置myid，其用来给observer生成myid
     static final long OBSERVER_ID = Long.MAX_VALUE;
 
     /*
      * Record leader election time
      */
+    //选举开始和结束事件
     public long start_fle, end_fle; // fle = fast leader election
     public static final String FLE_TIME_UNIT = "MS";
 
@@ -483,6 +485,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     /**
      * This is who I think the leader currently is.
      */
+    //当前的投票信息
     volatile private Vote currentVote;
 
     public synchronized Vote getCurrentVote(){
@@ -867,7 +870,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
          }
          //加载database
         loadDataBase();
-        //启动ServerCnxnFactory
+        //启动ServerCnxnFactory，主要用于处理客户端连接
         startServerCnxnFactory();
         try {
             adminServer.start();

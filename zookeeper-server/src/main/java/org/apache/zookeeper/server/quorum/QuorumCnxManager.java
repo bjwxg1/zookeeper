@@ -89,6 +89,7 @@ public class QuorumCnxManager {
     /*
      * Maximum capacity of thread queues
      */
+    //接受消除队列默认大小
     static final int RECV_CAPACITY = 100;
     // Initialized to 1 to prevent sending
     // stale notifications to peers
@@ -125,6 +126,7 @@ public class QuorumCnxManager {
      */
     final long mySid;
     final int socketTimeout;
+    //保存myid到QuorumServer的映射
     final Map<Long, QuorumPeer.QuorumServer> view;
     final boolean listenOnAllIPs;
     //sasl连接需要异步处理，该线程池就是进行异步处理的线程
@@ -175,6 +177,7 @@ public class QuorumCnxManager {
     /*
      * Counter to count worker threads
      */
+    //记录线程数
     private AtomicInteger threadCnt = new AtomicInteger(0);
 
     /*
@@ -185,13 +188,15 @@ public class QuorumCnxManager {
 
     private X509Util x509Util;
 
+    //包装的选举消息
     static public class Message {
         Message(ByteBuffer buffer, long sid) {
             this.buffer = buffer;
             this.sid = sid;
         }
-
+        //投票信息，最终解析为Notification
         ByteBuffer buffer;
+        //发送方myid
         long sid;
     }
 
@@ -199,6 +204,7 @@ public class QuorumCnxManager {
      * This class parses the initial identification sent out by peers with their
      * sid & hostname.
      */
+    //选举机器连接是发送的初始化消息
     static public class InitialMessage {
         public Long sid;
         public InetSocketAddress electionAddr;
@@ -546,6 +552,7 @@ public class QuorumCnxManager {
         try {
             //读取protocolVersion
             protocolVersion = din.readLong();
+            //默认protocolVersion为-65535
             if (protocolVersion >= 0) { // this is a server id and not a protocol version
                 sid = protocolVersion;
             } else {
@@ -599,7 +606,7 @@ public class QuorumCnxManager {
             //关闭对端连接
             LOG.debug("Create new connection to server: {}", sid);
             closeSocket(sock);
-            //创建到对端的连接
+            //创建到对端的连接[主动建立到对端的连接]并且启动SendWorker和RecvWork
             if (electionAddr != null) {
                 connectOne(sid, electionAddr);
             } else {
@@ -778,6 +785,7 @@ public class QuorumCnxManager {
     /**
      * Check if all queues are empty, indicating that all messages have been delivered.
      */
+    //判断所有发送队列，是否有消息已经发送
     boolean haveDelivered() {
         for (ArrayBlockingQueue<ByteBuffer> queue : queueSendMap.values()) {
             LOG.debug("Queue size: " + queue.size());
@@ -877,6 +885,7 @@ public class QuorumCnxManager {
     /**
      * Thread to listen on some port
      */
+    //用于监听其他服务器在选举端口上的连接
     public class Listener extends ZooKeeperThread {
         //服务器端的socket
         volatile ServerSocket ss = null;
@@ -908,7 +917,6 @@ public class QuorumCnxManager {
                         ss = new ServerSocket();
                     }
                     ss.setReuseAddress(true);
-
                     if (self.getQuorumListenOnAllIPs()) {
                         int port = self.getElectionAddress().getPort();
                         addr = new InetSocketAddress(port);
@@ -1131,16 +1139,13 @@ public class QuorumCnxManager {
 
             try {
                 while (running && !shutdown && sock != null) {
-
                     ByteBuffer b = null;
                     try {
-                        ArrayBlockingQueue<ByteBuffer> bq = queueSendMap
-                                .get(sid);
+                        ArrayBlockingQueue<ByteBuffer> bq = queueSendMap.get(sid);
                         if (bq != null) {
                             b = pollSendQueue(bq, 1000, TimeUnit.MILLISECONDS);
                         } else {
-                            LOG.error("No queue of incoming messages for " +
-                                      "server " + sid);
+                            LOG.error("No queue of incoming messages for " + "server " + sid);
                             break;
                         }
 
@@ -1149,8 +1154,7 @@ public class QuorumCnxManager {
                             send(b);
                         }
                     } catch (InterruptedException e) {
-                        LOG.warn("Interrupted while waiting for message on queue",
-                                e);
+                        LOG.warn("Interrupted while waiting for message on queue", e);
                     }
                 }
             } catch (Exception e) {
@@ -1167,6 +1171,7 @@ public class QuorumCnxManager {
      * Thread to receive messages. Instance waits on a socket read. If the
      * channel breaks, then removes itself from the pool of receivers.
      */
+    //消息接受线程
     class RecvWorker extends ZooKeeperThread {
         Long sid;
         Socket sock;
@@ -1220,9 +1225,7 @@ public class QuorumCnxManager {
                      */
                     int length = din.readInt();
                     if (length <= 0 || length > PACKETMAXSIZE) {
-                        throw new IOException(
-                                "Received packet with invalid packet: "
-                                        + length);
+                        throw new IOException("Received packet with invalid packet: " + length);
                     }
                     /**
                      * Allocates a new ByteBuffer to receive the message
