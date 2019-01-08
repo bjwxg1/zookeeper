@@ -127,7 +127,9 @@ public class QuorumCnxManager {
     final int socketTimeout;
     final Map<Long, QuorumPeer.QuorumServer> view;
     final boolean listenOnAllIPs;
+    //sasl连接需要异步处理，该线程池就是进行异步处理的线程
     private ThreadPoolExecutor connectionExecutor;
+    //正在建立连接过程中的授权链接
     private final Set<Long> inprogressConnections = Collections
             .synchronizedSet(new HashSet<Long>());
     private QuorumAuthServer authServer;
@@ -634,6 +636,7 @@ public class QuorumCnxManager {
         /*
          * If sending message to myself, then simply enqueue it (loopback).
          */
+        //判断需要发送的消息的Sid是否当前机器
         if (this.mySid == sid) {
              b.position(0);
              addToRecvQueue(new Message(b.duplicate(), sid));
@@ -991,6 +994,7 @@ public class QuorumCnxManager {
         /**
          * Halts this listener thread.
          */
+        //关闭Listener
         void halt(){
             try{
                 LOG.debug("Trying to close listener: " + ss);

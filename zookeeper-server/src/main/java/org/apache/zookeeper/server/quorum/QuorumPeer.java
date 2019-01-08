@@ -1104,6 +1104,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     public void run() {
         updateThreadName();
 
+        //注册监控信息
         LOG.debug("Starting quorum peer");
         try {
             jmxQuorumBean = new QuorumBean(this);
@@ -1147,6 +1148,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                         LOG.info("Attempting to start ReadOnlyZooKeeperServer");
 
                         // Create read-only server but don't start it immediately
+                        //如果允许readOnly模式，则创建ReadOnlyZooKeeperServer
+                        //需要注意的是此处没有立即启动roZk，而是创建一个异步线程并休眠一段时间在启动
                         final ReadOnlyZooKeeperServer roZk =
                             new ReadOnlyZooKeeperServer(logFactory, this, this.zkDb);
     
@@ -1178,6 +1181,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                                 shuttingDownLE = false;
                                 startLeaderElection();
                             }
+                            //进行投票并设置当前机器选票
                             setCurrentVote(makeLEStrategy().lookForLeader());
                         } catch (Exception e) {
                             LOG.warn("Unexpected exception", e);
@@ -1205,7 +1209,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
                 case OBSERVING:
                     try {
                         LOG.info("OBSERVING");
+                        //设置observer
                         setObserver(makeObserver(logFactory));
+                        //连接到Leader并开始进行数据同步
                         observer.observeLeader();
                     } catch (Exception e) {
                         LOG.warn("Unexpected exception",e );
