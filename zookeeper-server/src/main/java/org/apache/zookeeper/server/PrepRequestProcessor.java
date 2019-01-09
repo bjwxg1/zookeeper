@@ -106,8 +106,10 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
      */
     private static  boolean failCreate = false;
 
+    //存储已经收到的请求
     LinkedBlockingQueue<Request> submittedRequests = new LinkedBlockingQueue<Request>();
 
+    //链式处理，下一个Processor
     private final RequestProcessor nextProcessor;
 
     ZooKeeperServer zks;
@@ -131,6 +133,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
     public void run() {
         try {
             while (true) {
+                //从队列获取request
                 Request request = submittedRequests.take();
                 long traceMask = ZooTrace.CLIENT_REQUEST_TRACE_MASK;
                 if (request.type == OpCode.ping) {
@@ -139,9 +142,11 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 if (LOG.isTraceEnabled()) {
                     ZooTrace.logRequest(LOG, traceMask, 'P', request, "");
                 }
+                //接收到requestOfDeath退出
                 if (Request.requestOfDeath == request) {
                     break;
                 }
+                //进行处理
                 pRequest(request);
             }
         } catch (RequestProcessorException e) {
@@ -361,10 +366,12 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                                 Record record, boolean deserialize)
         throws KeeperException, IOException, RequestProcessorException
     {
+        //重新设置header
         request.setHdr(new TxnHeader(request.sessionId, request.cxid, zxid,
                 Time.currentWallTime(), type));
 
         switch (type) {
+            //判断是否是创建类型
             case OpCode.create:
             case OpCode.create2:
             case OpCode.createTTL:
@@ -377,6 +384,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 String parentPath = getParentPathAndValidate(path);
                 ChangeRecord parentRecord = getRecordForPath(parentPath);
                 ChangeRecord nodeRecord = getRecordForPath(path);
+                //判断是否有子节点
                 if (nodeRecord.childCount > 0) {
                     throw new KeeperException.NotEmptyException(path);
                 }
@@ -385,12 +393,14 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 }
                 request.setTxn(new DeleteTxn(path));
                 parentRecord = parentRecord.duplicate(request.getHdr().getZxid());
+                //父节点的子节点个数减1
                 parentRecord.childCount--;
                 addChangeRecord(parentRecord);
                 addChangeRecord(new ChangeRecord(request.getHdr().getZxid(), path, null, -1, null));
                 break;
             }
             case OpCode.delete:
+                //Session校验
                 zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
                 DeleteRequest deleteRequest = (DeleteRequest)record;
                 if(deserialize)
@@ -628,7 +638,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         if (deserialize) {
             ByteBufferInputStream.byteBuffer2Record(request.request, record);
         }
-
+        //节点类型
         int flags;
         String path;
         List<ACL> acl;
@@ -650,6 +660,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             ttl = -1;
         }
         CreateMode createMode = CreateMode.fromFlag(flags);
+        //request校验
         validateCreateRequest(path, createMode, request, ttl);
         String parentPath = validatePathForCreate(path, request.sessionId);
 
@@ -703,6 +714,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         }
     }
 
+    //获取父节点path
     private String getParentPathAndValidate(String path)
             throws BadArgumentsException {
         int lastSlash = path.lastIndexOf('/');
@@ -734,6 +746,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         request.setTxn(null);
 
         try {
+            //根据request.type参数判断是否是事务请求
             switch (request.type) {
             case OpCode.createContainer:
             case OpCode.create:

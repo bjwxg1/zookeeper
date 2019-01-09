@@ -58,28 +58,28 @@ public class Request {
         this.authInfo = null;
     }
 
+    //会话ID
     public final long sessionId;
-
+    //客户端事务ID
     public final int cxid;
-
+    //事务操作类型
     public final int type;
-
+    //请求的Record对象
     public final ByteBuffer request;
-
+    //请求的连接对象
     public final ServerCnxn cnxn;
-
+    //请求事务头
     private TxnHeader hdr;
-
+    //请求事务体Record
     private Record txn;
-
+    //ZOOKEEPER 事务ID
     public long zxid = -1;
-
+    //认证信息
     public final List<Id> authInfo;
-
+    //创建时间
     public final long createTime = Time.currentElapsedTime();
-
+    //所有者
     private Object owner;
-
     private KeeperException e;
 
     public QuorumVerifier qv = null;

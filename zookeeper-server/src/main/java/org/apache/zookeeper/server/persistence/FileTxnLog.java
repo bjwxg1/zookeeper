@@ -251,9 +251,8 @@ public class FileTxnLog implements TxnLog {
      */
     //日志写入操作
     //需要注意的是此时并没有真正的数据写入到文件，只是添加到streamsToFlush(需要强制落盘的文件流)
-    public synchronized boolean append(TxnHeader hdr, Record txn)
-        throws IOException
-    {
+    public synchronized boolean append(TxnHeader hdr, Record txn) throws IOException {
+        //hdr为空说明是非事务性请求
         if (hdr == null) {
             return false;
         }

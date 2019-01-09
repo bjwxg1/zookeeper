@@ -103,6 +103,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
 
             // we do this in an attempt to ensure that not all of the servers
             // in the ensemble take a snapshot at the same time
+            //取一个随机数，防止所有的机器同时进行快照的保存操作
             int randRoll = r.nextInt(snapCount/2);
             while (true) {
                 Request si = null;
@@ -120,16 +121,21 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
                 }
                 if (si != null) {
                     // track the number of records written to the log
+                    //建request追加到事务日志文件，只有事务操作才会添加成功
                     if (zks.getZKDatabase().append(si)) {
+                        //logCount数自增
                         logCount++;
                         if (logCount > (snapCount / 2 + randRoll)) {
                             randRoll = r.nextInt(snapCount/2);
                             // roll the log
+                            //产生新的事务日志文件
                             zks.getZKDatabase().rollLog();
                             // take a snapshot
+                            //判断是否正在进行快照生成
                             if (snapInProcess != null && snapInProcess.isAlive()) {
                                 LOG.warn("Too busy to snap, skipping");
                             } else {
+                                //创建快照生成线程并启动
                                 snapInProcess = new ZooKeeperThread("Snapshot Thread") {
                                         public void run() {
                                             try {
@@ -141,9 +147,12 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
                                     };
                                 snapInProcess.start();
                             }
+                            //重设计数器
                             logCount = 0;
                         }
-                    } else if (toFlush.isEmpty()) {
+                    }
+                    //如果是一个读操作，并且toFlush为空
+                    else if (toFlush.isEmpty()) {
                         // optimization for read heavy workloads
                         // iff this is a read, and there are no pending
                         // flushes (writes), then just pass this to the next
@@ -156,8 +165,10 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
                         }
                         continue;
                     }
+                    //添加到toFlush
                     toFlush.add(si);
                     if (toFlush.size() > 1000) {
+                        //强制刷新
                         flush(toFlush);
                     }
                 }
@@ -170,12 +181,11 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
         LOG.info("SyncRequestProcessor exited!");
     }
 
-    private void flush(LinkedList<Request> toFlush)
-        throws IOException, RequestProcessorException
-    {
+    private void flush(LinkedList<Request> toFlush) throws IOException, RequestProcessorException {
         if (toFlush.isEmpty())
             return;
 
+        //进行一次强制刷盘操作
         zks.getZKDatabase().commit();
         while (!toFlush.isEmpty()) {
             Request i = toFlush.remove();

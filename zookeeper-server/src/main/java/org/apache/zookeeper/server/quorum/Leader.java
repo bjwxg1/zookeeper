@@ -104,8 +104,7 @@ public class Leader {
     volatile LearnerCnxAcceptor cnxAcceptor = null;
 
     // list of all the learners, including followers and observers
-    private final HashSet<LearnerHandler> learners =
-        new HashSet<LearnerHandler>();
+    private final HashSet<LearnerHandler> learners = new HashSet<LearnerHandler>();
 
     private final BufferStats proposalStats;
 
@@ -115,8 +114,7 @@ public class Leader {
 
     public LearnerSnapshotThrottler createLearnerSnapshotThrottler(
             int maxConcurrentSnapshots, long maxConcurrentSnapshotTimeout) {
-        return new LearnerSnapshotThrottler(
-                maxConcurrentSnapshots, maxConcurrentSnapshotTimeout);
+        return new LearnerSnapshotThrottler(maxConcurrentSnapshots, maxConcurrentSnapshotTimeout);
     }
 
     /**
@@ -147,8 +145,7 @@ public class Leader {
         }
     }
 
-    private final HashSet<LearnerHandler> observingLearners =
-        new HashSet<LearnerHandler>();
+    private final HashSet<LearnerHandler> observingLearners = new HashSet<LearnerHandler>();
 
     /**
      * Returns a copy of the current observer snapshot
@@ -380,6 +377,7 @@ public class Leader {
      */
     final static int INFORMANDACTIVATE = 19;
 
+    //处理中的Proposal；key---》zxid
     final ConcurrentMap<Long, Proposal> outstandingProposals = new ConcurrentHashMap<Long, Proposal>();
 
     private final ConcurrentLinkedQueue<Proposal> toBeApplied = new ConcurrentLinkedQueue<Proposal>();
@@ -387,6 +385,7 @@ public class Leader {
     // VisibleForTesting
     protected final Proposal newLeaderProposal = new Proposal();
 
+    //负责接收Leaner的连接并创建LearnerHandler并启动
     class LearnerCnxAcceptor extends ZooKeeperCriticalThread {
         private volatile boolean stop = false;
 
@@ -400,15 +399,15 @@ public class Leader {
             try {
                 while (!stop) {
                     try{
+                        //接收learner的连接
                         Socket s = ss.accept();
-
                         // start with the initLimit, once the ack is processed
                         // in LearnerHandler switch to the syncLimit
                         s.setSoTimeout(self.tickTime * self.initLimit);
                         s.setTcpNoDelay(nodelay);
 
-                        BufferedInputStream is = new BufferedInputStream(
-                                s.getInputStream());
+                        BufferedInputStream is = new BufferedInputStream(s.getInputStream());
+                        //创建LearnerHandler并启动
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -780,7 +779,8 @@ public class Leader {
        // pending all wait for a quorum of old and new config, so it's not possible to get enough acks
        // for an operation without getting enough acks for preceding ops. But in the future if multiple
        // concurrent reconfigs are allowed, this can happen.
-       if (outstandingProposals.containsKey(zxid - 1)) return false;
+       if (outstandingProposals.containsKey(zxid - 1))
+           return false;
 
        // in order to be committed, a proposal must be accepted by a quorum.
        //
@@ -852,7 +852,8 @@ public class Leader {
      * @param followerAddr
      */
     synchronized public void processAck(long sid, long zxid, SocketAddress followerAddr) {
-        if (!allowedToCommit) return; // last op committed was a leader change - from now on
+        if (!allowedToCommit)
+            return; // last op committed was a leader change - from now on
                                      // the new leader should commit
         if (LOG.isTraceEnabled()) {
             LOG.trace("Ack zxid: 0x{}", Long.toHexString(zxid));
@@ -880,6 +881,7 @@ public class Leader {
             }
             return;
         }
+        //已经处理
         if (lastCommitted >= zxid) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("proposal has already been committed, pzxid: 0x{} zxid: 0x{}",
@@ -894,13 +896,14 @@ public class Leader {
                     Long.toHexString(zxid), followerAddr);
             return;
         }
-
+        //对应提议的ack集合添加sid记录
         p.addAck(sid);
         /*if (LOG.isDebugEnabled()) {
             LOG.debug("Count for zxid: 0x{} is {}",
                     Long.toHexString(zxid), p.ackSet.size());
         }*/
 
+        //尝试提交
         boolean hasCommitted = tryToCommit(p, zxid, followerAddr);
 
         // If p is a reconfiguration, multiple other operations may be ready to be committed,

@@ -33,6 +33,7 @@ public class ProposalRequestProcessor implements RequestProcessor {
     private static final Logger LOG =
         LoggerFactory.getLogger(ProposalRequestProcessor.class);
 
+    //只有leader节点才有这个属性
     LeaderZooKeeperServer zks;
 
     RequestProcessor nextProcessor;
@@ -68,17 +69,23 @@ public class ProposalRequestProcessor implements RequestProcessor {
          * call processRequest on the next processor.
          */
 
+        //判断是否是Follower或者observer发起的同步请求，
         if (request instanceof LearnerSyncRequest){
+            //走消息同步流程不走链
             zks.getLeader().processSync((LearnerSyncRequest)request);
         } else {
+            //将请求交给交给CommitProcessor处理
             nextProcessor.processRequest(request);
+            //判断是否是事务请求【非事务请求的header为空，具体参看PreRequestProcessor】
             if (request.getHdr() != null) {
                 // We need to sync and get consensus on any transactions
                 try {
+                    //leader发出提议,集群进行投票
                     zks.getLeader().propose(request);
                 } catch (XidRolloverException e) {
                     throw new RequestProcessorException(e.getMessage(), e);
                 }
+                //事务请求需要syncProcessor进行处理
                 syncProcessor.processRequest(request);
             }
         }
