@@ -38,6 +38,7 @@ public class ProposalRequestProcessor implements RequestProcessor {
 
     RequestProcessor nextProcessor;
 
+    //用于持久化的processor
     SyncRequestProcessor syncProcessor;
 
     public ProposalRequestProcessor(LeaderZooKeeperServer zks,
@@ -85,7 +86,7 @@ public class ProposalRequestProcessor implements RequestProcessor {
                 } catch (XidRolloverException e) {
                     throw new RequestProcessorException(e.getMessage(), e);
                 }
-                //事务请求需要syncProcessor进行处理
+                //事务请求需要syncProcessor进行处理[写入事务日志]
                 syncProcessor.processRequest(request);
             }
         }

@@ -108,12 +108,10 @@ public class FinalRequestProcessor implements RequestProcessor {
             if (request.getHdr() != null) {
                 TxnHeader hdr = request.getHdr();
                 long zxid = hdr.getZxid();
-                while (!zks.outstandingChanges.isEmpty()
-                       && zks.outstandingChanges.peek().zxid <= zxid) {
+                while (!zks.outstandingChanges.isEmpty() && zks.outstandingChanges.peek().zxid <= zxid) {
                     ChangeRecord cr = zks.outstandingChanges.remove();
                     if (cr.zxid < zxid) {
-                        LOG.warn("Zxid outstanding " + cr.zxid
-                                 + " is less than current " + zxid);
+                        LOG.warn("Zxid outstanding " + cr.zxid + " is less than current " + zxid);
                     }
                     if (zks.outstandingChangesForPath.get(cr.path) == cr) {
                         zks.outstandingChangesForPath.remove(cr.path);
@@ -136,8 +134,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             // We need to check if we can close the session id.
             // Sometimes the corresponding ServerCnxnFactory could be null because
             // we are just playing diffs from the leader.
-            if (closeSession(zks.serverCnxnFactory, request.sessionId) ||
-                    closeSession(zks.secureServerCnxnFactory, request.sessionId)) {
+            if (closeSession(zks.serverCnxnFactory, request.sessionId) || closeSession(zks.secureServerCnxnFactory, request.sessionId)) {
                 return;
             }
         }
@@ -200,25 +197,20 @@ public class FinalRequestProcessor implements RequestProcessor {
             case OpCode.ping: {
                 lastOp = "PING";
                 updateStats(request, lastOp, lastZxid);
-
                 cnxn.sendResponse(new ReplyHeader(-2, lastZxid, 0), null, "response");
                 return;
             }
             case OpCode.createSession: {
                 lastOp = "SESS";
                 updateStats(request, lastOp, lastZxid);
-
                 zks.finishSessionInit(request.cnxn, true);
                 return;
             }
             case OpCode.multi: {
                 lastOp = "MULT";
                 rsp = new MultiResponse() ;
-
                 for (ProcessTxnResult subTxnResult : rc.multiResult) {
-
                     OpResult subResult ;
-
                     switch (subTxnResult.type) {
                         case OpCode.check:
                             subResult = new CheckResult();

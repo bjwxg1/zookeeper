@@ -48,8 +48,8 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
         RequestProcessor {
     private static final Logger LOG = LoggerFactory.getLogger(SyncRequestProcessor.class);
     private final ZooKeeperServer zks;
-    private final LinkedBlockingQueue<Request> queuedRequests =
-        new LinkedBlockingQueue<Request>();
+    //接收到的request
+    private final LinkedBlockingQueue<Request> queuedRequests = new LinkedBlockingQueue<Request>();
     private final RequestProcessor nextProcessor;
 
     private Thread snapInProcess = null;
@@ -60,6 +60,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
      * disk. Basically this is the list of SyncItems whose callbacks will be
      * invoked after flush returns successfully.
      */
+    //待写入带磁盘的request
     private final LinkedList<Request> toFlush = new LinkedList<Request>();
     private final Random r = new Random();
     /**
@@ -67,13 +68,11 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
      */
     //默认值100000，表示两次进行快照保存之间进行的事务操作数
     private static int snapCount = ZooKeeperServer.getSnapCount();
-
     private final Request requestOfDeath = Request.requestOfDeath;
 
     public SyncRequestProcessor(ZooKeeperServer zks,
             RequestProcessor nextProcessor) {
-        super("SyncThread:" + zks.getServerId(), zks
-                .getZooKeeperServerListener());
+        super("SyncThread:" + zks.getServerId(), zks.getZooKeeperServerListener());
         this.zks = zks;
         this.nextProcessor = nextProcessor;
         running = true;
@@ -108,9 +107,9 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
             while (true) {
                 Request si = null;
                 if (toFlush.isEmpty()) {
-                    si = queuedRequests.take();
+                    si = queuedRequests.take();//阻塞
                 } else {
-                    si = queuedRequests.poll();
+                    si = queuedRequests.poll();//不阻塞[此处不阻塞是防止影响落盘]
                     if (si == null) {
                         flush(toFlush);
                         continue;
