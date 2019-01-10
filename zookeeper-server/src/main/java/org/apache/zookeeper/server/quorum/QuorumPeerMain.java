@@ -140,9 +140,7 @@ public class QuorumPeerMain {
         }
     }
 
-    public void runFromConfig(QuorumPeerConfig config)
-            throws IOException, AdminServerException
-    {
+    public void runFromConfig(QuorumPeerConfig config) throws IOException, AdminServerException {
       try {
           ManagedUtil.registerLog4jMBeans();
       } catch (JMException e) {
@@ -169,28 +167,21 @@ public class QuorumPeerMain {
           if (config.getClientPortAddress() != null) {
               cnxnFactory = ServerCnxnFactory.createFactory();
               //配置cnxnFactory：clientPortAddress和maxClientCnxns
-              cnxnFactory.configure(config.getClientPortAddress(),
-                      config.getMaxClientCnxns(),
-                      false);
+              cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
           }
 
           if (config.getSecureClientPortAddress() != null) {
               secureCnxnFactory = ServerCnxnFactory.createFactory();
-              secureCnxnFactory.configure(config.getSecureClientPortAddress(),
-                      config.getMaxClientCnxns(),
-                      true);
+              secureCnxnFactory.configure(config.getSecureClientPortAddress(), config.getMaxClientCnxns(), true);
           }
 
           //创建quorumPeer
           quorumPeer = getQuorumPeer();
           quorumPeer.setRootMetricsContext(metricsProvider.getRootContext());
           //创建并设置FileTxnSnapLog，FileTxnSnapLog作为中间层提供Zookeeper对底层日志的访问和操作
-          quorumPeer.setTxnFactory(new FileTxnSnapLog(
-                      config.getDataLogDir(),
-                      config.getDataDir()));
+          quorumPeer.setTxnFactory(new FileTxnSnapLog(config.getDataLogDir(), config.getDataDir()));
           quorumPeer.enableLocalSessions(config.areLocalSessionsEnabled());
-          quorumPeer.enableLocalSessionsUpgrading(
-              config.isLocalSessionsUpgradingEnabled());
+          quorumPeer.enableLocalSessionsUpgrading(config.isLocalSessionsUpgradingEnabled());
           //quorumPeer.setQuorumPeers(config.getAllMembers());
           //基本参数设置
           quorumPeer.setElectionType(config.getElectionAlg());

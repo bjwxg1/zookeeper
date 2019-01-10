@@ -849,10 +849,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             for (QuorumServer qs : getView().values()) {
                 authzHosts.add(qs.hostname);
             }
-            authServer = new SaslQuorumAuthServer(isQuorumServerSaslAuthRequired(),
-                    quorumServerLoginContext, authzHosts);
-            authLearner = new SaslQuorumAuthLearner(isQuorumLearnerSaslAuthRequired(),
-                    quorumServicePrincipal, quorumLearnerLoginContext);
+            authServer = new SaslQuorumAuthServer(isQuorumServerSaslAuthRequired(), quorumServerLoginContext, authzHosts);
+            authLearner = new SaslQuorumAuthLearner(isQuorumLearnerSaslAuthRequired(), quorumServicePrincipal, quorumLearnerLoginContext);
         } else {
             authServer = new NullQuorumAuthServer();
             authLearner = new NullQuorumAuthLearner();
@@ -1152,9 +1150,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
                         // Create read-only server but don't start it immediately
                         //如果允许readOnly模式，则创建ReadOnlyZooKeeperServer
-                        //需要注意的是此处没有立即启动roZk，而是创建一个异步线程并休眠一段时间在启动
-                        final ReadOnlyZooKeeperServer roZk =
-                            new ReadOnlyZooKeeperServer(logFactory, this, this.zkDb);
+                        //需要注意的是此处没有立即启动roZk，而是创建一个异步线程并休眠一段时间再启动
+                        final ReadOnlyZooKeeperServer roZk = new ReadOnlyZooKeeperServer(logFactory, this, this.zkDb);
     
                         // Instead of starting roZk immediately, wait some grace
                         // period before we decide we're partitioned.

@@ -916,8 +916,7 @@ public class FastLeaderElection implements Election {
         //注册监控信息
         try {
             self.jmxLeaderElectionBean = new LeaderElectionBean();
-            MBeanRegistry.getInstance().register(
-                    self.jmxLeaderElectionBean, self.jmxLocalPeerBean);
+            MBeanRegistry.getInstance().register(self.jmxLeaderElectionBean, self.jmxLocalPeerBean);
         } catch (Exception e) {
             LOG.warn("Failed to register with JMX", e);
             self.jmxLeaderElectionBean = null;
@@ -1003,8 +1002,7 @@ public class FastLeaderElection implements Election {
                             //并清空已经收到的选票【因为已经不再一个选举epoch，认为之前收到的选票都是无效的】
                             recvset.clear();
                             //判断是否需要更新自己的投票
-                            if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch,
-                                    getInitId(), getInitLastLoggedZxid(), getPeerEpoch())) {
+                            if(totalOrderPredicate(n.leader, n.zxid, n.peerEpoch, getInitId(), getInitLastLoggedZxid(), getPeerEpoch())) {
                                 //更新自己的投票为对方的投票
                                 updateProposal(n.leader, n.zxid, n.peerEpoch);
                             } else {

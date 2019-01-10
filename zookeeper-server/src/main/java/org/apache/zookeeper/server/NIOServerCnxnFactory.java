@@ -772,8 +772,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
         //创建工作线程池
         if (workerPool == null) {
             //注意使用的是 useAssignableThreads=false
-            workerPool = new WorkerService(
-                "NIOWorker", numWorkerThreads, false);
+            workerPool = new WorkerService("NIOWorker", numWorkerThreads, false);
         }
         //启动SelectorThread
         for(SelectorThread thread : selectorThreads) {

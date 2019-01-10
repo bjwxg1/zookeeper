@@ -42,16 +42,16 @@ import org.slf4j.LoggerFactory;
  * period. Sessions are thus expired in batches made up of sessions that expire
  * in a given interval.
  */
-public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
-        SessionTracker {
+public class SessionTrackerImpl extends ZooKeeperCriticalThread implements SessionTracker {
     private static final Logger LOG = LoggerFactory.getLogger(SessionTrackerImpl.class);
 
-    protected final ConcurrentHashMap<Long, SessionImpl> sessionsById =
-        new ConcurrentHashMap<Long, SessionImpl>();
+    //key--->sessionId;value-->session
+    protected final ConcurrentHashMap<Long, SessionImpl> sessionsById = new ConcurrentHashMap<Long, SessionImpl>();
 
+    //分桶保存Session
     private final ExpiryQueue<SessionImpl> sessionExpiryQueue;
-
-    private final ConcurrentMap<Long, Integer> sessionsWithTimeout;
+    //   //key--->sessionId;value-->过期时间
+    private final ConcurrentMap<Long,Integer> sessionsWithTimeout;
     private final AtomicLong nextSessionId = new AtomicLong();
 
     public static class SessionImpl implements Session {
@@ -65,6 +65,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
         final int timeout;
         boolean isClosing;
 
+        //Session的owner
         Object owner;
 
         public long getSessionId() { return sessionId; }
@@ -94,8 +95,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
 
     public SessionTrackerImpl(SessionExpirer expirer,
             ConcurrentMap<Long, Integer> sessionsWithTimeout, int tickTime,
-            long serverId, ZooKeeperServerListener listener)
-    {
+            long serverId, ZooKeeperServerListener listener) {
         super("SessionTracker", listener);
         this.expirer = expirer;
         this.sessionExpiryQueue = new ExpiryQueue<SessionImpl>(tickTime);
@@ -146,6 +146,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
     public void run() {
         try {
             while (running) {
+                //获取到下次检测前的等待时间
                 long waitTime = sessionExpiryQueue.getWaitTime();
                 if (waitTime > 0) {
                     Thread.sleep(waitTime);
@@ -238,8 +239,7 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
 
         running = false;
         if (LOG.isTraceEnabled()) {
-            ZooTrace.logTraceMessage(LOG, ZooTrace.getTextTraceLevel(),
-                                     "Shutdown SessionTrackerImpl!");
+            ZooTrace.logTraceMessage(LOG, ZooTrace.getTextTraceLevel(), "Shutdown SessionTrackerImpl!");
         }
     }
 
