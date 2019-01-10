@@ -830,11 +830,15 @@ public class Leader {
             informAndActivate(p, designatedLeader);
             //turnOffFollowers();
         } else {
+            //创建commit请求，发送给所有的follower
             commit(zxid);
+            //创建inform消息发送给所有的observer
             inform(p);
         }
+        //添加到commitProcessor的commitQueue
         zk.commitProcessor.commit(p.request);
         if(pendingSyncs.containsKey(zxid)){
+            //发送sync请求
             for(LearnerSyncRequest r: pendingSyncs.remove(zxid)) {
                 sendSync(r);
             }
@@ -859,8 +863,7 @@ public class Leader {
             LOG.trace("Ack zxid: 0x{}", Long.toHexString(zxid));
             for (Proposal p : outstandingProposals.values()) {
                 long packetZxid = p.packet.getZxid();
-                LOG.trace("outstanding proposal: 0x{}",
-                        Long.toHexString(packetZxid));
+                LOG.trace("outstanding proposal: 0x{}", Long.toHexString(packetZxid));
             }
             LOG.trace("outstanding proposals all");
         }
@@ -1098,8 +1101,7 @@ public class Leader {
          * election. Force a re-election instead. See ZOOKEEPER-1277
          */
         if ((request.zxid & 0xffffffffL) == 0xffffffffL) {
-            String msg =
-                    "zxid lower 32 bits have rolled over, forcing re-election, and therefore new epoch start";
+            String msg = "zxid lower 32 bits have rolled over, forcing re-election, and therefore new epoch start";
             shutdown(msg);
             throw new XidRolloverException(msg);
         }
@@ -1114,7 +1116,6 @@ public class Leader {
 
         synchronized(this) {
            p.addQuorumVerifier(self.getQuorumVerifier());
-
            if (request.getHdr().getType() == OpCode.reconfig){
                self.setLastSeenQuorumVerifier(request.qv, true);
            }

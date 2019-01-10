@@ -362,13 +362,11 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
      * @param request
      * @param record
      */
-    protected void pRequest2Txn(int type, long zxid, Request request,
-                                Record record, boolean deserialize)
+    protected void pRequest2Txn(int type, long zxid, Request request, Record record, boolean deserialize)
         throws KeeperException, IOException, RequestProcessorException
     {
         //重新设置header
-        request.setHdr(new TxnHeader(request.sessionId, request.cxid, zxid,
-                Time.currentWallTime(), type));
+        request.setHdr(new TxnHeader(request.sessionId, request.cxid, zxid, Time.currentWallTime(), type));
 
         switch (type) {
             //判断是否是创建类型
@@ -635,12 +633,12 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
     }
 
     private void pRequest2TxnCreate(int type, Request request, Record record, boolean deserialize) throws IOException, KeeperException {
+        //反序列化request
         if (deserialize) {
             ByteBufferInputStream.byteBuffer2Record(request.request, record);
         }
-        //节点类型
-        int flags;
-        String path;
+        int flags;//节点类型
+        String path;//路径
         List<ACL> acl;
         byte[] data;
         long ttl;
@@ -742,6 +740,9 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
     protected void pRequest(Request request) throws RequestProcessorException {
         // LOG.info("Prep>>> cxid = " + request.cxid + " type = " +
         // request.type + " id = 0x" + Long.toHexString(request.sessionId));
+        //设置header和txn为null.如果是事务性请求后续会重新设置
+        //为什么需要设置为null？
+        //因为在header内包含了zxid这个值，如果是事务性请求zxid是有服务器确定的【定序】，对于非事务性请求header也没有什么用途
         request.setHdr(null);
         request.setTxn(null);
 
@@ -856,8 +857,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             case OpCode.createSession:
             case OpCode.closeSession:
                 if (!request.isLocalSession()) {
-                    pRequest2Txn(request.type, zks.getNextZxid(), request,
-                                 null, true);
+                    pRequest2Txn(request.type, zks.getNextZxid(), request, null, true);
                 }
                 break;
 
@@ -872,8 +872,8 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             case OpCode.setWatches:
             case OpCode.checkWatches:
             case OpCode.removeWatches:
-                zks.sessionTracker.checkSession(request.sessionId,
-                        request.getOwner());
+                //如果是非事务性请求校验session是否有效
+                zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
                 break;
             default:
                 LOG.warn("unknown type " + request.type);
@@ -913,6 +913,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             }
         }
         request.zxid = zks.getZxid();
+        //交给下一个Processor处理
         nextProcessor.processRequest(request);
     }
 
