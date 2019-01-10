@@ -125,8 +125,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     private final AtomicInteger requestsInProcess = new AtomicInteger(0);
     final Deque<ChangeRecord> outstandingChanges = new ArrayDeque<>();
     // this data structure must be accessed under the outstandingChanges lock
-    final Map<String, ChangeRecord> outstandingChangesForPath =
-        new HashMap<String, ChangeRecord>();
+    final Map<String, ChangeRecord> outstandingChangesForPath = new HashMap<String, ChangeRecord>();
 
     protected ServerCnxnFactory serverCnxnFactory;
     protected ServerCnxnFactory secureServerCnxnFactory;
@@ -454,8 +453,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
 
-    public void startdata()
-    throws IOException, InterruptedException {
+    public void startdata() throws IOException, InterruptedException {
         //check to see if zkDb is not null
         if (zkDb == null) {
             zkDb = new ZKDatabase(this.txnLogFactory);
@@ -467,11 +465,15 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     public synchronized void startup() {
         if (sessionTracker == null) {
+            //创建SessionTracker
             createSessionTracker();
         }
+        //启动SessionTracker
         startSessionTracker();
+        //设置RequestProcess
         setupRequestProcessors();
 
+        //注册JMX
         registerJMX();
 
         setState(State.RUNNING);

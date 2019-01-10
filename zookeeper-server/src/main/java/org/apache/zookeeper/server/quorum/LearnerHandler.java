@@ -94,8 +94,7 @@ public class LearnerHandler extends ZooKeeperThread {
     /**
      * The packets to be sent to the learner
      */
-    final LinkedBlockingQueue<QuorumPacket> queuedPackets =
-        new LinkedBlockingQueue<QuorumPacket>();
+    final LinkedBlockingQueue<QuorumPacket> queuedPackets = new LinkedBlockingQueue<QuorumPacket>();
 
     /**
      * This class controls the time that the Leader has been

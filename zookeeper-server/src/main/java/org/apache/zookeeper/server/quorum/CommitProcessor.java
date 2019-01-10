@@ -82,21 +82,18 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
     /**
      * Incoming requests.
      */
-    protected LinkedBlockingQueue<Request> queuedRequests =
-        new LinkedBlockingQueue<Request>();
+    protected LinkedBlockingQueue<Request> queuedRequests = new LinkedBlockingQueue<Request>();
 
     /**
      * Requests that have been committed.
      */
-    protected final LinkedBlockingQueue<Request> committedRequests =
-        new LinkedBlockingQueue<Request>();
+    protected final LinkedBlockingQueue<Request> committedRequests = new LinkedBlockingQueue<Request>();
 
     /**
      * Requests that we are holding until commit comes in. Keys represent
      * session ids, each value is a linked list of the session's requests.
      */
-    protected final Map<Long, LinkedList<Request>> pendingRequests =
-            new HashMap<Long, LinkedList<Request>>(10000);
+    protected final Map<Long, LinkedList<Request>> pendingRequests = new HashMap<Long, LinkedList<Request>>(10000);
 
     /** The number of requests currently being processed */
     protected final AtomicInteger numRequestsProcessing = new AtomicInteger(0);

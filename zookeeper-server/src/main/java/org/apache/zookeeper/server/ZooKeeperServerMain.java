@@ -91,15 +91,14 @@ public class ZooKeeperServerMain {
         System.exit(ExitCode.EXECUTION_FINISHED.getValue());
     }
 
-    protected void initializeAndRun(String[] args)
-        throws ConfigException, IOException, AdminServerException
-    {
+    protected void initializeAndRun(String[] args) throws ConfigException, IOException, AdminServerException {
         try {
             ManagedUtil.registerLog4jMBeans();
         } catch (JMException e) {
             LOG.warn("Unable to register log4j JMX control", e);
         }
 
+        //解析config
         ServerConfig config = new ServerConfig();
         if (args.length == 1) {
             config.parse(args[0]);
@@ -116,8 +115,7 @@ public class ZooKeeperServerMain {
      * @throws IOException
      * @throws AdminServerException
      */
-    public void runFromConfig(ServerConfig config)
-            throws IOException, AdminServerException {
+    public void runFromConfig(ServerConfig config) throws IOException, AdminServerException {
         LOG.info("Starting server");
         FileTxnSnapLog txnLog = null;
         try {
@@ -134,7 +132,9 @@ public class ZooKeeperServerMain {
             // so rather than spawning another thread, we will just call
             // run() in this thread.
             // create a file logger url from the command line args
+            //创建FileTxnSnapLog
             txnLog = new FileTxnSnapLog(config.dataLogDir, config.dataDir);
+            //创建ZooKeeperServer
             final ZooKeeperServer zkServer = new ZooKeeperServer(txnLog,
                     config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, null);
             zkServer.setRootMetricsContext(metricsProvider.getRootContext());
@@ -143,8 +143,7 @@ public class ZooKeeperServerMain {
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.
             final CountDownLatch shutdownLatch = new CountDownLatch(1);
-            zkServer.registerServerShutdownHandler(
-                    new ZooKeeperServerShutdownHandler(shutdownLatch));
+            zkServer.registerServerShutdownHandler(new ZooKeeperServerShutdownHandler(shutdownLatch));
 
             // Start Admin server
             adminServer = AdminServerFactory.createAdminServer();
@@ -153,6 +152,7 @@ public class ZooKeeperServerMain {
 
             boolean needStartZKServer = true;
             if (config.getClientPortAddress() != null) {
+                //创建并启动ServerCnxnFactory
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
                 cnxnFactory.startup(zkServer);
