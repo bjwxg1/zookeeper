@@ -93,22 +93,18 @@ public class LearnerSnapshotThrottler {
         int snapshotNumber;
 
         synchronized (snapCountSyncObject) {
-            if (!essential
-                && timeoutMillis > 0
-                && snapsInProgress >= maxConcurrentSnapshots) {
+            if (!essential && timeoutMillis > 0 && snapsInProgress >= maxConcurrentSnapshots) {
                 long timestamp = Time.currentElapsedTime();
                 do {
                     snapCountSyncObject.wait(timeoutMillis);
-                } while (snapsInProgress >= maxConcurrentSnapshots
-                         && timestamp + timeoutMillis < Time.currentElapsedTime());
+                } while (snapsInProgress >= maxConcurrentSnapshots && timestamp + timeoutMillis < Time.currentElapsedTime());
             }
 
             if (essential || snapsInProgress < maxConcurrentSnapshots) {
                 snapsInProgress++;
                 snapshotNumber = snapsInProgress;
             } else {
-                throw new SnapshotThrottleException(snapsInProgress + 1,
-                                                    maxConcurrentSnapshots);
+                throw new SnapshotThrottleException(snapsInProgress + 1, maxConcurrentSnapshots);
             }
         }
 
@@ -127,9 +123,7 @@ public class LearnerSnapshotThrottler {
         }
 
         if (newCount < 0) {
-            String errorMsg =
-                    "endSnapshot() called incorrectly; current snapshot count is "
-                            + newCount;
+            String errorMsg = "endSnapshot() called incorrectly; current snapshot count is " + newCount;
             LOG.error(errorMsg);
         }
     }

@@ -69,14 +69,15 @@ public class Follower extends Learner{
         long electionTimeTaken = self.end_fle - self.start_fle;
         self.setElectionTimeTaken(electionTimeTaken);
         ServerMetrics.ELECTION_TIME.add(electionTimeTaken);
-        LOG.info("FOLLOWING - LEADER ELECTION TOOK - {} {}", electionTimeTaken,
-                QuorumPeer.FLE_TIME_UNIT);
+        LOG.info("FOLLOWING - LEADER ELECTION TOOK - {} {}", electionTimeTaken, QuorumPeer.FLE_TIME_UNIT);
         self.start_fle = 0;
         self.end_fle = 0;
         fzk.registerJMX(new FollowerBean(this, zk), self.jmxLocalPeerBean);
         try {
+            //获取leader节点地址
             QuorumServer leaderServer = findLeader();
             try {
+                //连接到leader
                 connectToLeader(leaderServer.addr, leaderServer.hostname);
                 long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO);
                 if (self.isReconfigStateChange())

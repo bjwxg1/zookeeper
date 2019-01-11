@@ -81,6 +81,7 @@ public class Leader {
 
     // Throttle when there are too many concurrent snapshots being sent to observers
     private static final String MAX_CONCURRENT_SNAPSHOTS = "zookeeper.leader.maxConcurrentSnapshots";
+    //同时进行snapshot方式同时的learner的数量
     private static final int maxConcurrentSnapshots;
     private static final String MAX_CONCURRENT_SNAPSHOT_TIMEOUT = "zookeeper.leader.maxConcurrentSnapshotTimeout";
     private static final long maxConcurrentSnapshotTimeout;
@@ -91,6 +92,7 @@ public class Leader {
         LOG.info(MAX_CONCURRENT_SNAPSHOT_TIMEOUT + " = " + maxConcurrentSnapshotTimeout);
     }
 
+    //Learner进行snapshot方式数据同步的限流器
     private final LearnerSnapshotThrottler learnerSnapshotThrottler;
 
     final LeaderZooKeeperServer zk;
@@ -127,8 +129,8 @@ public class Leader {
     }
 
     // list of followers that are ready to follow (i.e synced with the leader)
-    private final HashSet<LearnerHandler> forwardingFollowers =
-        new HashSet<LearnerHandler>();
+    //已经同步的follower集合
+    private final HashSet<LearnerHandler> forwardingFollowers = new HashSet<LearnerHandler>();
 
     /**
      * Returns a copy of the current forwarding follower snapshot
@@ -163,8 +165,7 @@ public class Leader {
     }
 
     // Pending sync requests. Must access under 'this' lock.
-    private final Map<Long,List<LearnerSyncRequest>> pendingSyncs =
-        new HashMap<Long,List<LearnerSyncRequest>>();
+    private final Map<Long,List<LearnerSyncRequest>> pendingSyncs = new HashMap<Long,List<LearnerSyncRequest>>();
 
     synchronized public int getNumPendingSyncs() {
         return pendingSyncs.size();
@@ -270,8 +271,7 @@ public class Leader {
             throw e;
         }
         this.zk = zk;
-        this.learnerSnapshotThrottler = createLearnerSnapshotThrottler(
-                maxConcurrentSnapshots, maxConcurrentSnapshotTimeout);
+        this.learnerSnapshotThrottler = createLearnerSnapshotThrottler(maxConcurrentSnapshots, maxConcurrentSnapshotTimeout);
     }
 
     /**
@@ -412,8 +412,7 @@ public class Leader {
                         fh.start();
                     } catch (SocketException e) {
                         if (stop) {
-                            LOG.info("exception while shutting down acceptor: "
-                                    + e);
+                            LOG.info("exception while shutting down acceptor: " + e);
 
                             // When Leader.shutdown() calls ss.close(),
                             // the call to accept throws an exception.
@@ -466,11 +465,11 @@ public class Leader {
      */
     void lead() throws IOException, InterruptedException {
         self.end_fle = Time.currentElapsedTime();
+        //选举耗时
         long electionTimeTaken = self.end_fle - self.start_fle;
         self.setElectionTimeTaken(electionTimeTaken);
         ServerMetrics.ELECTION_TIME.add(electionTimeTaken);
-        LOG.info("LEADING - LEADER ELECTION TOOK - {} {}", electionTimeTaken,
-                QuorumPeer.FLE_TIME_UNIT);
+        LOG.info("LEADING - LEADER ELECTION TOOK - {} {}", electionTimeTaken, QuorumPeer.FLE_TIME_UNIT);
         self.start_fle = 0;
         self.end_fle = 0;
 
@@ -478,12 +477,14 @@ public class Leader {
 
         try {
             self.tick.set(0);
+            //加载数据
             zk.loadData();
 
             leaderStateSummary = new StateSummary(self.getCurrentEpoch(), zk.getLastProcessedZxid());
 
             // Start thread that waits for connection requests from
             // new followers.
+            //创建并启动Acceptor线程
             cnxAcceptor = new LearnerCnxAcceptor();
             cnxAcceptor.start();
 
@@ -495,13 +496,11 @@ public class Leader {
                 lastProposed = zk.getZxid();
             }
 
-            newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(),
-                   null, null);
+            newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(), null, null);
 
 
             if ((newLeaderProposal.packet.getZxid() & 0xffffffffL) != 0) {
-                LOG.info("NEWLEADER proposal has Zxid of "
-                        + Long.toHexString(newLeaderProposal.packet.getZxid()));
+                LOG.info("NEWLEADER proposal has Zxid of " + Long.toHexString(newLeaderProposal.packet.getZxid()));
             }
 
             QuorumVerifier lastSeenQV = self.getLastSeenQuorumVerifier();
@@ -545,6 +544,7 @@ public class Leader {
             // acknowledged
 
              waitForEpochAck(self.getId(), leaderStateSummary);
+             //设置currentEpoch
              self.setCurrentEpoch(epoch);
 
              try {
@@ -1174,8 +1174,7 @@ public class Leader {
      * @return last proposed zxid
      * @throws InterruptedException
      */
-    synchronized public long startForwarding(LearnerHandler handler,
-            long lastSeenZxid) {
+    synchronized public long startForwarding(LearnerHandler handler, long lastSeenZxid) {
         // Queue up any outstanding requests enabling the receipt of
         // new requests
         if (lastProposed > lastSeenZxid) {
@@ -1186,8 +1185,7 @@ public class Leader {
                 handler.queuePacket(p.packet);
                 // Since the proposal has been committed we need to send the
                 // commit message also
-                QuorumPacket qp = new QuorumPacket(Leader.COMMIT, p.packet
-                        .getZxid(), null, null);
+                QuorumPacket qp = new QuorumPacket(Leader.COMMIT, p.packet.getZxid(), null, null);
                 handler.queuePacket(qp);
             }
             // Only participant need to get outstanding proposals
@@ -1211,6 +1209,7 @@ public class Leader {
         return lastProposed;
     }
     // VisibleForTesting
+    //Follower myid 集合
     protected final Set<Long> connectingFollowers = new HashSet<Long>();
 
     private volatile boolean quitWaitForEpoch = false;
@@ -1268,9 +1267,11 @@ public class Leader {
 
     public long getEpochToPropose(long sid, long lastAcceptedEpoch) throws InterruptedException, IOException {
         synchronized(connectingFollowers) {
+            //判断是否在等待生成新的epoch
             if (!waitingForNewEpoch) {
                 return epoch;
             }
+            //每次选举完成后epoch要加1
             if (lastAcceptedEpoch >= epoch) {
                 epoch = lastAcceptedEpoch+1;
             }
@@ -1278,9 +1279,9 @@ public class Leader {
                 connectingFollowers.add(sid);
             }
             QuorumVerifier verifier = self.getQuorumVerifier();
-            if (connectingFollowers.contains(self.getId()) &&
-                                            verifier.containsQuorum(connectingFollowers)) {
+            if (connectingFollowers.contains(self.getId()) && verifier.containsQuorum(connectingFollowers)) {
                 waitingForNewEpoch = false;
+                //设置acceptedEpoch并写入文件
                 self.setAcceptedEpoch(epoch);
                 connectingFollowers.notifyAll();
             } else {
@@ -1410,11 +1411,9 @@ public class Leader {
             throws InterruptedException {
 
         synchronized (newLeaderProposal.qvAcksetPairs) {
-
             if (quorumFormed) {
                 return;
             }
-
             long currentZxid = newLeaderProposal.packet.getZxid();
             if (zxid != currentZxid) {
                 LOG.error("NEWLEADER ACK from sid: " + sid

@@ -95,9 +95,9 @@ public class Learner {
     static {
         LOG.info("TCP NoDelay set to: " + nodelay);
     }   
-    
-    final ConcurrentHashMap<Long, ServerCnxn> pendingRevalidations =
-        new ConcurrentHashMap<Long, ServerCnxn>();
+
+    //待验证的ServerCnxn，key--->sessionId
+    final ConcurrentHashMap<Long, ServerCnxn> pendingRevalidations = new ConcurrentHashMap<Long, ServerCnxn>();
     
     public int getPendingRevalidationsCount() {
         return pendingRevalidations.size();
@@ -121,8 +121,7 @@ public class Learner {
         dos.writeLong(clientId);
         dos.writeInt(timeout);
         dos.close();
-        QuorumPacket qp = new QuorumPacket(Leader.REVALIDATE, -1, baos
-                .toByteArray(), null);
+        QuorumPacket qp = new QuorumPacket(Leader.REVALIDATE, -1, baos.toByteArray(), null);
         pendingRevalidations.put(clientId, cnxn);
         if (LOG.isTraceEnabled()) {
             ZooTrace.logTraceMessage(LOG,
@@ -201,6 +200,7 @@ public class Learner {
     /**
      * Returns the address of the node we think is the leader.
      */
+    //返回Leader节点地址
     protected QuorumServer findLeader() {
         QuorumServer leaderServer = null;
         // Find the leader by id
@@ -215,8 +215,7 @@ public class Learner {
             }
         }
         if (leaderServer == null) {
-            LOG.warn("Couldn't find the leader with id = "
-                    + current.getId());
+            LOG.warn("Couldn't find the leader with id = " + current.getId());
         }
         return leaderServer;
     }
@@ -264,6 +263,7 @@ public class Learner {
                     throw new IOException("initLimit exceeded on retries.");
                 }
 
+                //连接到Leader节点
                 sockConnect(sock, addr, Math.min(self.tickTime * self.syncLimit, remainingInitLimitTime));
                 if (self.isSslQuorum())  {
                     ((SSLSocket) sock).startHandshake();
@@ -295,8 +295,7 @@ public class Learner {
 
         self.authLearner.authenticate(sock, hostname);
 
-        leaderIs = BinaryInputArchive.getArchive(new BufferedInputStream(
-                sock.getInputStream()));
+        leaderIs = BinaryInputArchive.getArchive(new BufferedInputStream(sock.getInputStream()));
         bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
         leaderOs = BinaryOutputArchive.getArchive(bufferedOutput);
     }
@@ -339,7 +338,7 @@ public class Learner {
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
-        
+        //发送
         writePacket(qp, true);
         readPacket(qp);        
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());

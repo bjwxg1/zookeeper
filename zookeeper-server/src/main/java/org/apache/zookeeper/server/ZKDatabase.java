@@ -316,8 +316,7 @@ public class ZKDatabase {
     public boolean isTxnLogSyncEnabled() {
         boolean enabled = snapshotSizeFactor >= 0;
         if (enabled) {
-            LOG.info("On disk txn sync enabled with snapshotSizeFactor "
-                + snapshotSizeFactor);
+            LOG.info("On disk txn sync enabled with snapshotSizeFactor " + snapshotSizeFactor);
         } else {
             LOG.info("On disk txn sync disabled");
         }

@@ -123,8 +123,7 @@ public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
     }
 
     public boolean checkIfValidGlobalSession(long sess, int to) {
-        if (self.areLocalSessionsEnabled() &&
-            !upgradeableSessionTracker.isGlobalSession(sess)) {
+        if (self.areLocalSessionsEnabled() && !upgradeableSessionTracker.isGlobalSession(sess)) {
             return false;
         }
         return sessionTracker.touchSession(sess, to);
