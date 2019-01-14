@@ -277,7 +277,9 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      */
     void registerAndConnect(SocketChannel sock, InetSocketAddress addr) 
     throws IOException {
+        //注册OP_CONNECT
         sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
+        //进行连接，需要注意的时是异步进行连接
         boolean immediateConnect = sock.connect(addr);
         if (immediateConnect) {
             sendThread.primeConnection();
@@ -286,14 +288,17 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     
     @Override
     void connect(InetSocketAddress addr) throws IOException {
+        //创建socket
         SocketChannel sock = createSock();
         try {
+            //注册并连接
            registerAndConnect(sock, addr);
       } catch (IOException e) {
             LOG.error("Unable to open socket to " + addr);
             sock.close();
             throw e;
         }
+        //initialized为false
         initialized = false;
 
         /*
@@ -369,7 +374,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
             }
             //读写处理
             else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
-                 doIO(pendingQueue, cnxn);
+                doIO(pendingQueue, cnxn);
             }
         }
         if (sendThread.getZkState().isConnected()) {

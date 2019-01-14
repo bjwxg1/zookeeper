@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Demo {
     public static void main(String[] args) throws Exception {
-       /* String connectUrl = "127.0.0.1:2181";
+        String connectUrl = "127.0.0.1:2181";
         String path = "/demoRoot";
         int sessionTimeout = 1000 * 60;
         Stat stat =new Stat();
@@ -31,17 +31,17 @@ public class Demo {
         System.out.println(stat);
         byte[] result = zooKeeper.getData(path,watcher,stat);
         System.out.println(new String(result));
-        Thread.currentThread().sleep(1000 * 60 * 60);*/
+        Thread.currentThread().sleep(1000 * 60 * 60);
 
-        selectDemo();
+       // selectDemo();
     }
 
-    public static void selectDemo() throws Exception{
+   /* public static void selectDemo() throws Exception{
         Selector selector = Selector.open();
         System.err.println("开始进行select():"+System.currentTimeMillis());
         selector.select();
         System.err.println("结束select():"+System.currentTimeMillis());
-    }
+    }*/
 }
 
    class DefaultWatcher implements Watcher {

@@ -90,7 +90,7 @@ import java.util.Set;
  * All the iterations will be done by calling the methods of ZooKeeper class.
  * The methods of this class are thread-safe unless otherwise noted.
  * <p>
- *  通过心跳和Sever保持回话的有效性
+ *  通过心跳和Sever保持会话的有效性
  * Once a connection to a server is established, a session ID is assigned to the
  * client. The client will send heart beats to the server periodically to keep
  * the session valid.
@@ -265,19 +265,18 @@ public class ZooKeeper implements AutoCloseable {
      * API.
      */
     static class ZKWatchManager implements ClientWatchManager {
-        private final Map<String, Set<Watcher>> dataWatches =
-            new HashMap<String, Set<Watcher>>();
-        private final Map<String, Set<Watcher>> existWatches =
-            new HashMap<String, Set<Watcher>>();
-        private final Map<String, Set<Watcher>> childWatches =
-            new HashMap<String, Set<Watcher>>();
+        //Znode数据变更的watcher
+        private final Map<String, Set<Watcher>> dataWatches = new HashMap<String, Set<Watcher>>();
+        //znode是否存在的watcher，可以设置在一个不存在的znode上
+        private final Map<String, Set<Watcher>> existWatches = new HashMap<String, Set<Watcher>>();
+        //子znode变更的watcher
+        private final Map<String, Set<Watcher>> childWatches = new HashMap<String, Set<Watcher>>();
         private boolean disableAutoWatchReset;
-
+        //默认的watcher，如果没事显示制定则使用这个
+        protected volatile Watcher defaultWatcher;
         ZKWatchManager(boolean disableAutoWatchReset) {
             this.disableAutoWatchReset = disableAutoWatchReset;
         }
-
-        protected volatile Watcher defaultWatcher;
 
         final private void addTo(Set<Watcher> from, Set<Watcher> to) {
             if (from != null) {
@@ -424,8 +423,7 @@ public class ZooKeeper implements AutoCloseable {
                 Watcher watcher, String path, boolean local, int rc,
                 Set<Watcher> removedWatchers) throws KeeperException {
             if (!local && rc != Code.OK.intValue()) {
-                throw KeeperException
-                        .create(KeeperException.Code.get(rc), path);
+                throw KeeperException.create(KeeperException.Code.get(rc), path);
             }
             boolean success = false;
             // When local flag is true, remove watchers for the given path
@@ -463,10 +461,7 @@ public class ZooKeeper implements AutoCloseable {
          *                                                        Event.EventType, java.lang.String)
          */
         @Override
-        public Set<Watcher> materialize(Watcher.Event.KeeperState state,
-                                        Watcher.Event.EventType type,
-                                        String clientPath)
-        {
+        public Set<Watcher> materialize(Watcher.Event.KeeperState state, Watcher.Event.EventType type, String clientPath) {
             Set<Watcher> result = new HashSet<Watcher>();
 
             switch (type) {
@@ -882,8 +877,7 @@ public class ZooKeeper implements AutoCloseable {
         watchManager = defaultWatchManager();
         //设置defaultWatcher
         watchManager.defaultWatcher = watcher;
-        ConnectStringParser connectStringParser = new ConnectStringParser(
-                connectString);
+        ConnectStringParser connectStringParser = new ConnectStringParser(connectString);
         hostProvider = aHostProvider;
 
         //创建ClientCnxn

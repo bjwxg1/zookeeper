@@ -64,6 +64,7 @@ abstract class ClientCnxnSocket {
     protected final AtomicLong sentCount = new AtomicLong(0L);
     protected final AtomicLong recvCount = new AtomicLong(0L);
 
+    //上次接受和发送数据时间
     protected long lastHeard;
     protected long lastSend;
     protected long now;
