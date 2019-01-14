@@ -42,12 +42,12 @@ import org.apache.zookeeper.txn.TxnHeader;
  * A SyncRequestProcessor is also spawned off to log proposals from the leader.
  */
 public class FollowerZooKeeperServer extends LearnerZooKeeperServer {
-    private static final Logger LOG =
-        LoggerFactory.getLogger(FollowerZooKeeperServer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FollowerZooKeeperServer.class);
 
     /*
      * Pending sync requests
      */
+    //到处理的sync请求队列
     ConcurrentLinkedQueue<Request> pendingSyncs;
 
     /**
@@ -79,6 +79,7 @@ public class FollowerZooKeeperServer extends LearnerZooKeeperServer {
         syncProcessor.start();
     }
 
+    //待处理的请求集合
     LinkedBlockingQueue<Request> pendingTxns = new LinkedBlockingQueue<Request>();
 
     public void logRequest(TxnHeader hdr, Record txn) {
@@ -97,14 +98,12 @@ public class FollowerZooKeeperServer extends LearnerZooKeeperServer {
      */
     public void commit(long zxid) {
         if (pendingTxns.size() == 0) {
-            LOG.warn("Committing " + Long.toHexString(zxid)
-                    + " without seeing txn");
+            LOG.warn("Committing " + Long.toHexString(zxid) + " without seeing txn");
             return;
         }
         long firstElementZxid = pendingTxns.element().zxid;
         if (firstElementZxid != zxid) {
-            LOG.error("Committing zxid 0x" + Long.toHexString(zxid)
-                    + " but next pending txn 0x"
+            LOG.error("Committing zxid 0x" + Long.toHexString(zxid) + " but next pending txn 0x"
                     + Long.toHexString(firstElementZxid));
             System.exit(ExitCode.UNMATCHED_TXN_COMMIT.getValue());
         }

@@ -246,6 +246,7 @@ public class Learner {
      * @throws ConnectException
      * @throws InterruptedException
      */
+    //连接到Leader节点尝试建立与leader节点的连接
     protected void connectToLeader(InetSocketAddress addr, String hostname)
             throws IOException, InterruptedException, X509Exception {
         this.sock = createSocket();
@@ -254,6 +255,7 @@ public class Learner {
         int remainingInitLimitTime = initLimitTime;
         long startNanoTime = nanoTime();
 
+        //重试5次
         for (int tries = 0; tries < 5; tries++) {
             try {
                 // recalculate the init limit time because retries sleep for 1000 milliseconds
@@ -321,6 +323,9 @@ public class Learner {
      * @return the zxid the Leader sends for synchronization purposes.
      * @throws IOException
      */
+    //1.follower节点向leader节点发送followerInfo消息[zxid]
+    //2.接收leader的LEADERINFO消息
+    //3.向leader节点响应ACKEPOCH消息
     protected long registerWithLeader(int pktType) throws IOException{
         /*
          * Send follower info, including last zxid and sid
@@ -338,8 +343,9 @@ public class Learner {
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
-        //发送
+        //发送followerInfo消息
         writePacket(qp, true);
+        //读取leader节点关于followerInfo消息的响应
         readPacket(qp);        
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
 		if (qp.getType() == Leader.LEADERINFO) {
@@ -422,8 +428,7 @@ public class Learner {
                 syncSnapshot = true;
             } else if (qp.getType() == Leader.TRUNC) {
                 //we need to truncate the log to the lastzxid of the leader
-                LOG.warn("Truncating log to get in sync with the leader 0x"
-                        + Long.toHexString(qp.getZxid()));
+                LOG.warn("Truncating log to get in sync with the leader 0x" + Long.toHexString(qp.getZxid()));
                 boolean truncated=zk.getZKDatabase().truncateLog(qp.getZxid());
                 if (!truncated) {
                     // not able to truncate the log
@@ -435,8 +440,7 @@ public class Learner {
 
             }
             else {
-                LOG.error("Got unexpected packet from leader: {}, exiting ... ",
-                          LearnerHandler.packetToString(qp));
+                LOG.error("Got unexpected packet from leader: {}, exiting ... ", LearnerHandler.packetToString(qp));
                 System.exit(ExitCode.QUORUM_PACKET_ERROR.getValue());
 
             }
@@ -627,27 +631,23 @@ public class Learner {
     }
     
     protected void revalidate(QuorumPacket qp) throws IOException {
-        ByteArrayInputStream bis = new ByteArrayInputStream(qp
-                .getData());
+        ByteArrayInputStream bis = new ByteArrayInputStream(qp.getData());
         DataInputStream dis = new DataInputStream(bis);
         long sessionId = dis.readLong();
         boolean valid = dis.readBoolean();
         ServerCnxn cnxn = pendingRevalidations.remove(sessionId);
         if (cnxn == null) {
-            LOG.warn("Missing session 0x"
-                    + Long.toHexString(sessionId)
-                    + " for validation");
+            LOG.warn("Missing session 0x" + Long.toHexString(sessionId) + " for validation");
         } else {
             zk.finishSessionInit(cnxn, valid);
         }
         if (LOG.isTraceEnabled()) {
-            ZooTrace.logTraceMessage(LOG,
-                    ZooTrace.SESSION_TRACE_MASK,
-                    "Session 0x" + Long.toHexString(sessionId)
+            ZooTrace.logTraceMessage(LOG, ZooTrace.SESSION_TRACE_MASK, "Session 0x" + Long.toHexString(sessionId)
                     + " is valid: " + valid);
         }
     }
-        
+
+    //获取touchTable并返回
     protected void ping(QuorumPacket qp) throws IOException {
         // Send back the ping with our session data
         ByteArrayOutputStream bos = new ByteArrayOutputStream();

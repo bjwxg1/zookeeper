@@ -39,6 +39,7 @@ import org.apache.zookeeper.txn.TxnHeader;
  */
 public class Follower extends Learner{
 
+    //最后处理的事务的zxid
     private long lastQueued;
     // This is the same object as this.zk, but we cache the downcast op
     final FollowerZooKeeperServer fzk;
@@ -79,6 +80,7 @@ public class Follower extends Learner{
             try {
                 //连接到leader
                 connectToLeader(leaderServer.addr, leaderServer.hostname);
+                //向Leader注册，发送FollowerInfo
                 long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO);
                 if (self.isReconfigStateChange())
                    throw new Exception("learned about role change");
@@ -91,6 +93,7 @@ public class Follower extends Learner{
                     throw new IOException("Error: Epoch of leader is lower");
                 }
                 long startTime = Time.currentElapsedTime();
+                //开始和leader节点进行数据同步[历史数据同步]
                 try {
                     syncWithLeader(newEpochZxid);
                 } finally {
@@ -98,8 +101,11 @@ public class Follower extends Learner{
                     ServerMetrics.FOLLOWER_SYNC_TIME.add(syncTime);
                 }
                 QuorumPacket qp = new QuorumPacket();
+                //
                 while (this.isRunning()) {
+                    //读取从Leader的消息
                     readPacket(qp);
+                    //进行消息处理
                     processPacket(qp);
                 }
             } catch (Exception e) {
@@ -125,7 +131,8 @@ public class Follower extends Learner{
      */
     protected void processPacket(QuorumPacket qp) throws Exception{
         switch (qp.getType()) {
-        case Leader.PING:            
+        case Leader.PING:
+            //ping消息处理
             ping(qp);            
             break;
         case Leader.PROPOSAL:           
@@ -144,10 +151,11 @@ public class Follower extends Learner{
                QuorumVerifier qv = self.configFromString(new String(setDataTxn.getData()));
                self.setLastSeenQuorumVerifier(qv, true);                               
             }
-            
+            //添加到pingQueue并交给syncRequestProcessor处理
             fzk.logRequest(hdr, txn);
             break;
         case Leader.COMMIT:
+            //commit处理
             fzk.commit(qp.getZxid());
             break;
             
