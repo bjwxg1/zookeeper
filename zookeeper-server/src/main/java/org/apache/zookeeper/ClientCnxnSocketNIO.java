@@ -66,8 +66,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      * @throws InterruptedException
      * @throws IOException
      */
-    void doIO(List<Packet> pendingQueue, ClientCnxn cnxn)
-      throws InterruptedException, IOException {
+    void doIO(List<Packet> pendingQueue, ClientCnxn cnxn) throws InterruptedException, IOException {
         SocketChannel sock = (SocketChannel) sockKey.channel();
         if (sock == null) {
             throw new IOException("Socket is null!");
@@ -90,8 +89,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                 } else if (!initialized) {
                     readConnectResult();
                     enableRead();
-                    if (findSendablePacket(outgoingQueue,
-                            sendThread.tunnelAuthInProgress()) != null) {
+                    if (findSendablePacket(outgoingQueue, sendThread.tunnelAuthInProgress()) != null) {
                         // Since SASL authentication has completed (if client is configured to do so),
                         // outgoing packets waiting in the outgoingQueue can now be sent.
                         enableWrite();
@@ -99,6 +97,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
                     updateLastHeard();
+                    //将initialized设置为True
                     initialized = true;
                 } else {
                     //读取响应，将响应解码后添加到Event队列等待处理
@@ -111,8 +110,8 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         }
         //向服务器端发送数据
         if (sockKey.isWritable()) {
+            //获取可发送的packet
             Packet p = findSendablePacket(outgoingQueue, sendThread.tunnelAuthInProgress());
-
             if (p != null) {
                 updateLastSend();
                 // If we already started writing p, p.bb will already exist
@@ -120,6 +119,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     if ((p.requestHeader != null) &&
                             (p.requestHeader.getType() != OpCode.ping) &&
                             (p.requestHeader.getType() != OpCode.auth)) {
+                        //如果不是ping消息或者auth消息设置requestHeader的xid
                         p.requestHeader.setXid(cnxn.getXid());
                     }
                     p.createBB();
@@ -132,6 +132,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     if (p.requestHeader != null
                             && p.requestHeader.getType() != OpCode.ping
                             && p.requestHeader.getType() != OpCode.auth) {
+                        //如果不是ping消息或者auth消息添加到pendingQueue
                         synchronized (pendingQueue) {
                             pendingQueue.add(p);
                         }
