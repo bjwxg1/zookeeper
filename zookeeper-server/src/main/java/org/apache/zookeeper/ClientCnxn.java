@@ -148,15 +148,10 @@ public class ClientCnxn {
     private volatile int negotiatedSessionTimeout;
 
     private int readTimeout;
-
     private final int sessionTimeout;
-
     private final ZooKeeper zooKeeper;
-
     private final ClientWatchManager watcher;
-
     private long sessionId;
-
     private byte sessionPasswd[] = new byte[16];
 
     /**
@@ -166,11 +161,8 @@ public class ClientCnxn {
      * read-only clients only.
      */
     private boolean readOnly;
-
     final String chrootPath;
-
     final SendThread sendThread;
-
     final EventThread eventThread;
 
     /**
@@ -396,7 +388,6 @@ public class ClientCnxn {
         this.sessionTimeout = sessionTimeout;
         this.hostProvider = hostProvider;
         this.chrootPath = chrootPath;
-
         connectTimeout = sessionTimeout / hostProvider.size();
         readTimeout = sessionTimeout * 2 / 3;
         readOnly = canBeReadOnly;
@@ -406,6 +397,7 @@ public class ClientCnxn {
         //创建时间处理线程
         eventThread = new EventThread();
         this.clientConfig=zooKeeper.getClientConfig();
+        //初始化requestTimeOut
         initRequestTimeout();
     }
 
@@ -819,6 +811,7 @@ public class ClientCnxn {
         private long lastPingSentNs;
         private final ClientCnxnSocket clientCnxnSocket;
         private Random r = new Random();
+        //是否是首次连接
         private boolean isFirstConnect = true;
 
         //读取响应生成相应的event交给EventThread处理
@@ -982,25 +975,25 @@ public class ClientCnxn {
                     clientCnxnSocket.getRemoteSocketAddress());
             isFirstConnect = false;
             long sessId = (seenRwServerBefore) ? sessionId : 0;
-            ConnectRequest conReq = new ConnectRequest(0, lastZxid,
-                    sessionTimeout, sessId, sessionPasswd);
+            //创建ConnectRequest
+            ConnectRequest conReq = new ConnectRequest(0, lastZxid, sessionTimeout, sessId, sessionPasswd);
             // We add backwards since we are pushing into the front
             // Only send if there's a pending watch
             // TODO: here we have the only remaining use of zooKeeper in
             // this class. It's to be eliminated!
+            //如果DISABLE_AUTO_WATCH_RESET为false，
+            // 根据现有的watcher创建setWatches请求并添加到outgoingQueue
             if (!clientConfig.getBoolean(ZKClientConfig.DISABLE_AUTO_WATCH_RESET)) {
                 List<String> dataWatches = zooKeeper.getDataWatches();
                 List<String> existWatches = zooKeeper.getExistWatches();
                 List<String> childWatches = zooKeeper.getChildWatches();
-                if (!dataWatches.isEmpty()
-                        || !existWatches.isEmpty() || !childWatches.isEmpty()) {
+                if (!dataWatches.isEmpty() || !existWatches.isEmpty() || !childWatches.isEmpty()) {
                     Iterator<String> dataWatchesIter = prependChroot(dataWatches).iterator();
                     Iterator<String> existWatchesIter = prependChroot(existWatches).iterator();
                     Iterator<String> childWatchesIter = prependChroot(childWatches).iterator();
                     long setWatchesLastZxid = lastZxid;
 
-                    while (dataWatchesIter.hasNext()
-                           || existWatchesIter.hasNext() || childWatchesIter.hasNext()) {
+                    while (dataWatchesIter.hasNext() || existWatchesIter.hasNext() || childWatchesIter.hasNext()) {
                         List<String> dataWatchesBatch = new ArrayList<String>();
                         List<String> existWatchesBatch = new ArrayList<String>();
                         List<String> childWatchesBatch = new ArrayList<String>();
@@ -1036,13 +1029,16 @@ public class ClientCnxn {
                 }
             }
 
+            //将authData添加到outgoingQueue
             for (AuthData id : authInfo) {
                 outgoingQueue.addFirst(new Packet(new RequestHeader(-4,
                         OpCode.auth), null, new AuthPacket(0, id.scheme,
                         id.data), null, null));
             }
+            //将Connect请求添加到outgoingQueue
             outgoingQueue.addFirst(new Packet(null, null, conReq,
                     null, null, readOnly));
+            //注册OP_READOP_WRITE
             clientCnxnSocket.connectionPrimed();
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Session establishment request sent on "
@@ -1097,18 +1093,19 @@ public class ClientCnxn {
                     LOG.warn("Unexpected exception", e);
                 }
             }
+            //设置状态为CONNECTING
             state = States.CONNECTING;
 
             String hostPort = addr.getHostString() + ":" + addr.getPort();
             MDC.put("myid", hostPort);
             setName(getName().replaceAll("\\(.*\\)", "(" + hostPort + ")"));
+            //如果允许使用SaslClient创建ZooKeeperSaslClient
             if (clientConfig.isSaslClientEnabled()) {
                 try {
                     if (zooKeeperSaslClient != null) {
                         zooKeeperSaslClient.shutdown();
                     }
-                    zooKeeperSaslClient = new ZooKeeperSaslClient(SaslServerPrincipal.getServerPrincipal(addr, clientConfig),
-                        clientConfig);
+                    zooKeeperSaslClient = new ZooKeeperSaslClient(SaslServerPrincipal.getServerPrincipal(addr, clientConfig), clientConfig);
                 } catch (LoginException e) {
                     // An authentication error occurred when the SASL client tried to initialize:
                     // for Kerberos this means that the client failed to authenticate with the KDC.
@@ -1124,6 +1121,7 @@ public class ClientCnxn {
             }
             logStartConnect(addr);
 
+            //调用clientCnxnSocket Connect()
             clientCnxnSocket.connect(addr);
         }
 
@@ -1142,6 +1140,7 @@ public class ClientCnxn {
             //初始化clientCnxnSocket的SessionId和outgoingQueue
             clientCnxnSocket.introduce(this, sessionId, outgoingQueue);
             clientCnxnSocket.updateNow();
+            //更新lastSend和lastHeard时间
             clientCnxnSocket.updateLastSendAndHeard();
             int to;//timeOut
             long lastPingRwServer = Time.currentElapsedTime();
@@ -1168,6 +1167,7 @@ public class ClientCnxn {
                         clientCnxnSocket.updateLastSendAndHeard();
                     }
 
+                    //zooKeeperSaslClient的初始化
                     if (state.isConnected()) {
                         // determine whether we need to send an AuthFailed event.
                         if (zooKeeperSaslClient != null) {
@@ -1195,9 +1195,7 @@ public class ClientCnxn {
                             }
 
                             if (sendAuthEvent == true) {
-                                eventThread.queueEvent(new WatchedEvent(
-                                      Watcher.Event.EventType.None,
-                                      authState,null));
+                                eventThread.queueEvent(new WatchedEvent(Watcher.Event.EventType.None, authState,null));
                                 if (state == States.AUTH_FAILED) {
                                   eventThread.queueEventOfDeath();
                                 }
@@ -1681,9 +1679,7 @@ public class ClientCnxn {
 
     private void initRequestTimeout() {
         try {
-            requestTimeout = clientConfig.getLong(
-                    ZKClientConfig.ZOOKEEPER_REQUEST_TIMEOUT,
-                    ZKClientConfig.ZOOKEEPER_REQUEST_TIMEOUT_DEFAULT);
+            requestTimeout = clientConfig.getLong(ZKClientConfig.ZOOKEEPER_REQUEST_TIMEOUT, ZKClientConfig.ZOOKEEPER_REQUEST_TIMEOUT_DEFAULT);
             LOG.info("{} value is {}. feature enabled=",
                     ZKClientConfig.ZOOKEEPER_REQUEST_TIMEOUT,
                     requestTimeout, requestTimeout > 0);
