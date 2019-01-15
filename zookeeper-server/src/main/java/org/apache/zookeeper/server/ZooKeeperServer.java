@@ -122,6 +122,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
      */
     static final private long superSecret = 0XB3415C00L;
 
+    //处理中请求计数
     private final AtomicInteger requestsInProcess = new AtomicInteger(0);
     final Deque<ChangeRecord> outstandingChanges = new ArrayDeque<>();
     // this data structure must be accessed under the outstandingChanges lock
@@ -739,6 +740,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         try {
             if (valid) {
                 if (serverCnxnFactory != null && serverCnxnFactory.cnxns.contains(cnxn)) {
+                    //注册连接
                     serverCnxnFactory.registerConnection(cnxn);
                 } else if (secureServerCnxnFactory != null && secureServerCnxnFactory.cnxns.contains(cnxn)) {
                     secureServerCnxnFactory.registerConnection(cnxn);
@@ -758,8 +760,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             bos.writeInt(-1, "len");
             rsp.serialize(bos, "connect");
             if (!cnxn.isOldClient) {
-                bos.writeBool(
-                        this instanceof ReadOnlyZooKeeperServer, "readOnly");
+                bos.writeBool(this instanceof ReadOnlyZooKeeperServer, "readOnly");
             }
             baos.close();
             ByteBuffer bb = ByteBuffer.wrap(baos.toByteArray());
@@ -1073,6 +1074,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         cnxn.disableRecv();
         long sessionId = connReq.getSessionId();
         if (sessionId == 0) {
+            //创建Session
             long id = createSession(cnxn, passwd, sessionTimeout);
             LOG.debug("Client attempting to establish new session:" +
                             " session = 0x{}, zxid = 0x{}, timeout = {}, address = {}",
@@ -1095,6 +1097,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                 secureServerCnxnFactory.closeSession(sessionId);
             }
             cnxn.setSessionId(sessionId);
+            //重新打开Session
             reopenSession(cnxn, sessionId, passwd, sessionTimeout);
         }
     }
@@ -1148,8 +1151,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                     LOG.debug("Authentication succeeded for scheme: " + scheme);
                 }
                 LOG.info("auth success " + cnxn.getRemoteSocketAddress());
-                ReplyHeader rh = new ReplyHeader(h.getXid(), 0,
-                        KeeperException.Code.OK.intValue());
+                ReplyHeader rh = new ReplyHeader(h.getXid(), 0, KeeperException.Code.OK.intValue());
                 cnxn.sendResponse(rh, null, null);
             } else {
                 if (ap == null) {
@@ -1174,8 +1176,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             cnxn.sendResponse(rh,rsp, "response"); // not sure about 3rd arg..what is it?
             return;
         } else {
-            Request si = new Request(cnxn, cnxn.getSessionId(), h.getXid(),
-              h.getType(), incomingBuffer, cnxn.getAuthInfo());
+            Request si = new Request(cnxn, cnxn.getSessionId(), h.getXid(), h.getType(), incomingBuffer, cnxn.getAuthInfo());
             si.setOwner(ServerCnxn.me);
             // Always treat packet from the client as a possible
             // local request.

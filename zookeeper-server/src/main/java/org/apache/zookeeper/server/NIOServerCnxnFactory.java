@@ -109,8 +109,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
          *
          * Default to using 64k direct buffers.
          */
-        directBufferBytes = Integer.getInteger(
-            ZOOKEEPER_NIO_DIRECT_BUFFER_BYTES, 64 * 1024);
+        directBufferBytes = Integer.getInteger(ZOOKEEPER_NIO_DIRECT_BUFFER_BYTES, 64 * 1024);
     }
 
     /**
@@ -192,8 +191,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             super("NIOServerCxnFactory.AcceptThread:" + addr);
             this.acceptSocket = ss;
             //注册accept事件
-            this.acceptKey =
-                acceptSocket.register(selector, SelectionKey.OP_ACCEPT);
+            this.acceptKey = acceptSocket.register(selector, SelectionKey.OP_ACCEPT);
             this.selectorThreads = Collections.unmodifiableList(
                 new ArrayList<SelectorThread>(selectorThreads));
             selectorIterator = this.selectorThreads.iterator();
@@ -230,8 +228,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             try {
                 selector.select();
 
-                Iterator<SelectionKey> selectedKeys =
-                    selector.selectedKeys().iterator();
+                Iterator<SelectionKey> selectedKeys = selector.selectedKeys().iterator();
                 while (!stopped && selectedKeys.hasNext()) {
                     SelectionKey key = selectedKeys.next();
                     selectedKeys.remove();
@@ -251,8 +248,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                             pauseAccept(10);
                         }
                     } else {
-                        LOG.warn("Unexpected ops in accept select "
-                                 + key.readyOps());
+                        LOG.warn("Unexpected ops in accept select " + key.readyOps());
                     }
                 }
             } catch (IOException e) {
@@ -299,11 +295,9 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 int cnxncount = getClientCnxnCount(ia);
                 //判断是否超过maxClientCnxns限制
                 if (maxClientCnxns > 0 && cnxncount >= maxClientCnxns){
-                    throw new IOException("Too many connections from " + ia
-                                          + " - max is " + maxClientCnxns );
+                    throw new IOException("Too many connections from " + ia + " - max is " + maxClientCnxns );
                 }
-                LOG.debug("Accepted socket connection from "
-                         + sc.socket().getRemoteSocketAddress());
+                LOG.debug("Accepted socket connection from " + sc.socket().getRemoteSocketAddress());
                 //设置为非阻塞模式
                 sc.configureBlocking(false);
 
@@ -313,6 +307,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                     selectorIterator = selectorThreads.iterator();
                 }
                 SelectorThread selectorThread = selectorIterator.next();
+                //将Accept的连接分配给selectorThread
                 if (!selectorThread.addAcceptedConnection(sc)) {
                     throw new IOException(
                         "Unable to add connection to selector queue"
@@ -321,8 +316,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 acceptErrorLogger.flush();
             } catch (IOException e) {
                 // accept, maxClientCnxns, configureBlocking
-                acceptErrorLogger.rateLimitLog(
-                    "Error accepting new connection: " + e.getMessage());
+                acceptErrorLogger.rateLimitLog("Error accepting new connection: " + e.getMessage());
                 //如果失败快速关闭
                 fastCloseSock(sc);
             }
@@ -402,7 +396,6 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
                 while (!stopped) {
                     try {
                         //调用select()进行IO操作
-                        //TODO 这个地方有个疑问：
                         select();
                         processAcceptedConnections();
                         processInterestOpsUpdateRequests();
@@ -438,12 +431,12 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
 
         private void select() {
             try {
-                //TODO 此时selector没有注册任何Channel和事件，select()方法何时返回
+                //疑问：此时selector没有注册任何Channel和事件，select()方法何时返回
+                //每次添加Socket进来的时候都会wakeup
                 selector.select();
 
                 Set<SelectionKey> selected = selector.selectedKeys();
-                ArrayList<SelectionKey> selectedList =
-                    new ArrayList<SelectionKey>(selected);
+                ArrayList<SelectionKey> selectedList = new ArrayList<SelectionKey>(selected);
                 Collections.shuffle(selectedList);
                 Iterator<SelectionKey> selectedKeys = selectedList.iterator();
                 while(!stopped && selectedKeys.hasNext()) {
@@ -476,7 +469,6 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             //创建IO Request
             IOWorkRequest workRequest = new IOWorkRequest(this, key);
             NIOServerCnxn cnxn = (NIOServerCnxn) key.attachment();
-
             // Stop selecting this key while processing on its
             // connection
             cnxn.disableSelectable();
@@ -498,9 +490,12 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             while (!stopped && (accepted = acceptedQueue.poll()) != null) {
                 SelectionKey key = null;
                 try {
+                    //注册OP_READ
                     key = accepted.register(selector, SelectionKey.OP_READ);
+                    //创建NIOServerCnxn
                     NIOServerCnxn cnxn = createConnection(accepted, key, this);
                     key.attach(cnxn);
+                    //添加到ipMap和cnxns
                     addCnxn(cnxn);
                 } catch (IOException e) {
                     // register, createConnection
@@ -630,8 +625,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
 
     // ipMap is used to limit connections per IP
     //记录每个IP所建立连接的集合，
-    private final ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>> ipMap =
-        new ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>>( );
+    private final ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>> ipMap = new ConcurrentHashMap<InetAddress, Set<NIOServerCnxn>>( );
 
     //每个client建立的最大建立的最大连接数
     protected int maxClientCnxns = 60;
@@ -661,9 +655,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     private volatile boolean stopped = true;
     //过期连接清除线程
     private ConnectionExpirerThread expirerThread;
+    //接收连接线程
     private AcceptThread acceptThread;
-    private final Set<SelectorThread> selectorThreads =
-        new HashSet<SelectorThread>();
+    //selector 线程
+    private final Set<SelectorThread> selectorThreads = new HashSet<SelectorThread>();
 
     @Override
     public void configure(InetSocketAddress addr, int maxcc, boolean secure) throws IOException {
@@ -674,30 +669,25 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
 
         maxClientCnxns = maxcc;
         //超时时间
-        sessionlessCnxnTimeout = Integer.getInteger(
-            ZOOKEEPER_NIO_SESSIONLESS_CNXN_TIMEOUT, 10000);
+        sessionlessCnxnTimeout = Integer.getInteger(ZOOKEEPER_NIO_SESSIONLESS_CNXN_TIMEOUT, 10000);
         // We also use the sessionlessCnxnTimeout as expiring interval for
         // cnxnExpiryQueue. These don't need to be the same, but the expiring
         // interval passed into the ExpiryQueue() constructor below should be
         // less than or equal to the timeout.
-        cnxnExpiryQueue =
-            new ExpiryQueue<NIOServerCnxn>(sessionlessCnxnTimeout);
+        cnxnExpiryQueue = new ExpiryQueue<NIOServerCnxn>(sessionlessCnxnTimeout);
         //创建ConnectionExpirerThread
         expirerThread = new ConnectionExpirerThread();
 
         int numCores = Runtime.getRuntime().availableProcessors();
         // 32 cores sweet spot seems to be 4 selector threads
-        numSelectorThreads = Integer.getInteger(
-            ZOOKEEPER_NIO_NUM_SELECTOR_THREADS,
+        numSelectorThreads = Integer.getInteger(ZOOKEEPER_NIO_NUM_SELECTOR_THREADS,
             Math.max((int) Math.sqrt((float) numCores/2), 1));
         if (numSelectorThreads < 1) {
             throw new IOException("numSelectorThreads must be at least 1");
         }
 
-        numWorkerThreads = Integer.getInteger(
-            ZOOKEEPER_NIO_NUM_WORKER_THREADS, 2 * numCores);
-        workerShutdownTimeoutMS = Long.getLong(
-            ZOOKEEPER_NIO_SHUTDOWN_TIMEOUT, 5000);
+        numWorkerThreads = Integer.getInteger(ZOOKEEPER_NIO_NUM_WORKER_THREADS, 2 * numCores);
+        workerShutdownTimeoutMS = Long.getLong(ZOOKEEPER_NIO_SHUTDOWN_TIMEOUT, 5000);
 
         LOG.info("Configuring NIO connection handler with "
                  + (sessionlessCnxnTimeout/1000) + "s sessionless connection"

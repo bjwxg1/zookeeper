@@ -55,8 +55,7 @@ public abstract class ServerCnxnFactory {
     static final ByteBuffer closeConn = ByteBuffer.allocate(0);
 
     // sessionMap is used by closeSession()
-    final ConcurrentHashMap<Long, ServerCnxn> sessionMap =
-        new ConcurrentHashMap<Long, ServerCnxn>();
+    final ConcurrentHashMap<Long, ServerCnxn> sessionMap = new ConcurrentHashMap<Long, ServerCnxn>();
 
     public void addSession(long sessionId, ServerCnxn cnxn) {
         sessionMap.put(sessionId, cnxn);
