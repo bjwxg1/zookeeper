@@ -160,10 +160,13 @@ public class NIOServerCnxn extends ServerCnxn {
         if (incomingBuffer.remaining() == 0) { // have we read length bytes?
             incomingBuffer.flip();
             packetReceived(4 + incomingBuffer.remaining());
-            //如果没有完成初始化，读取Request请求
             if (!initialized) {
+                //如果没有完成初始化，读取ConnectRequest请求
+                //Zookeeper客户端和Zookeeper服务端连接建立成功后，Zookeeper客户端并没有完成初始化完毕
+                //Zookeeper客户端需要发送ConnectRequest和Server协商会话相关信息
                 readConnectRequest();
             } else {
+                //如果已经初始化处理正常请求
                 readRequest();
             }
             lenBuffer.clear();
@@ -303,6 +306,7 @@ public class NIOServerCnxn extends ServerCnxn {
             }
 
             if (k.isReadable()) {
+                //读取字节到
                 int rc = sock.read(incomingBuffer);
                 if (rc < 0) {
                     throw new EndOfStreamException(
@@ -312,6 +316,7 @@ public class NIOServerCnxn extends ServerCnxn {
                 }
                 if (incomingBuffer.remaining() == 0) {
                     boolean isPayload;
+                    //如果incomingBuffer==lenBuffer，说明读的头消息
                     if (incomingBuffer == lenBuffer) { // start of next request
                         incomingBuffer.flip();
                         isPayload = readLength(k);
@@ -320,6 +325,7 @@ public class NIOServerCnxn extends ServerCnxn {
                         // continuation
                         isPayload = true;
                     }
+                    //读消息体
                     if (isPayload) { // not the case for 4letterword
                         readPayload();
                     }
@@ -332,7 +338,6 @@ public class NIOServerCnxn extends ServerCnxn {
             }
             if (k.isWritable()) {
                 handleWrite(k);
-
                 if (!initialized && !getReadInterest() && !getWriteInterest()) {
                     throw new CloseRequestException("responded to info probe");
                 }

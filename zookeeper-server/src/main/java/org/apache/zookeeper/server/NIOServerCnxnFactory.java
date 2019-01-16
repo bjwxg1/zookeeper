@@ -550,8 +550,8 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             }
 
             if (key.isReadable() || key.isWritable()) {
+                //进行IO操作
                 cnxn.doIO(key);
-
                 // Check if we shutdown or doIO() closed this connection
                 if (stopped) {
                     cnxn.close();
@@ -565,10 +565,14 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             }
 
             // Mark this connection as once again ready for selection
+            //在Selector线程中将Channel交给Worker线程进行IO操作时会进行disableSelectable()操作
+            //此处IO操作已经处理完成调用enableSelectable，
+            // 让Selector操作可以继续对该channel进行Select操作
             cnxn.enableSelectable();
             // Push an update request on the queue to resume selecting
             // on the current set of interest ops, which may have changed
             // as a result of the I/O operations we just performed.
+            //添加到selector线程的updateQueue
             if (!selectorThread.addInterestOpsUpdateRequest(key)) {
                 cnxn.close();
             }
