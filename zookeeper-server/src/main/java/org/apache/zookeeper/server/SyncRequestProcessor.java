@@ -106,11 +106,13 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
             int randRoll = r.nextInt(snapCount/2);
             while (true) {
                 Request si = null;
+                //
                 if (toFlush.isEmpty()) {
                     si = queuedRequests.take();//阻塞
                 } else {
                     si = queuedRequests.poll();//不阻塞[此处不阻塞是防止影响落盘]
                     if (si == null) {
+                        //
                         flush(toFlush);
                         continue;
                     }

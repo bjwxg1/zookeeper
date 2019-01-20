@@ -742,7 +742,8 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         // request.type + " id = 0x" + Long.toHexString(request.sessionId));
         //设置header和txn为null.如果是事务性请求后续会重新设置
         //为什么需要设置为null？
-        //因为在header内包含了zxid这个值，如果是事务性请求zxid是有服务器确定的【定序】，对于非事务性请求header也没有什么用途
+        //因为在header内包含了zxid这个值，如果是事务性请求zxid是有服务器确定的【定序】，
+        // 对于非事务性请求header也没有什么用途
         request.setHdr(null);
         request.setTxn(null);
 

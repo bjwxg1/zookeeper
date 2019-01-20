@@ -822,6 +822,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                     // processor it should wait for setting up the request
                     // processor chain. The state will be updated to RUNNING
                     // after the setup.
+                    //等待ZookeeperServer启动完毕
                     while (state == State.INITIAL) {
                         wait(1000);
                     }

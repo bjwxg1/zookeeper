@@ -779,12 +779,14 @@ public class Leader {
        // pending all wait for a quorum of old and new config, so it's not possible to get enough acks
        // for an operation without getting enough acks for preceding ops. But in the future if multiple
        // concurrent reconfigs are allowed, this can happen.
+        //判断是一个事务是否已经处理完成，如果没处理直接返回
        if (outstandingProposals.containsKey(zxid - 1))
            return false;
 
        // in order to be committed, a proposal must be accepted by a quorum.
        //
        // getting a quorum from all necessary configurations.
+        //判断是否收到超过半数的ack，如果没有直接返回
         if (!p.hasAllQuorums()) {
            return false;
         }
@@ -797,8 +799,8 @@ public class Leader {
                     + (lastCommitted+1));
         }
 
+        //从outstandingProposals中删除，添加到toBeApplied队列
         outstandingProposals.remove(zxid);
-
         if (p.request != null) {
              toBeApplied.add(p);
         }
@@ -877,7 +879,7 @@ public class Leader {
             return;
         }
 
-
+        //待处理的Proposal集合为空，直接返回
         if (outstandingProposals.size() == 0) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("outstanding is 0");
@@ -1106,6 +1108,7 @@ public class Leader {
             throw new XidRolloverException(msg);
         }
 
+        //反序列化request，并构建QuorumPacket
         byte[] data = SerializeUtils.serializeRequest(request);
         proposalStats.setLastBufferSize(data.length);
         QuorumPacket pp = new QuorumPacket(Leader.PROPOSAL, request.zxid, data, null);
@@ -1128,8 +1131,11 @@ public class Leader {
                 LOG.debug("Proposing:: " + request);
             }
 
+            //设置lastProposed
             lastProposed = p.packet.getZxid();
+            //添加到outstandingProposals【已经发送，等待follwer的ack的提议】
             outstandingProposals.put(lastProposed, p);
+            //将QuorumPacket发送给所有的Follower
             sendPacket(pp);
         }
         return p;
