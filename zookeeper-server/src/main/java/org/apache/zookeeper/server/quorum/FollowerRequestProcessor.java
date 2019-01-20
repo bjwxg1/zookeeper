@@ -69,6 +69,7 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 // We want to queue the request to be processed before we submit
                 // the request to the leader so that we are ready to receive
                 // the response
+                //所有的请求都需要交给nextProcessor
                 nextProcessor.processRequest(request);
 
                 // We now ship the request to the leader. As with all
@@ -78,8 +79,8 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 // add it to pendingSyncs.
                 switch (request.type) {
                 case OpCode.sync:
-                    zks.pendingSyncs.add(request);
-                    zks.getFollower().request(request);
+                    zks.pendingSyncs.add(request);//如果是Sync请求添加到pendingSyncs队列
+                    zks.getFollower().request(request);//向Leader发送请求
                     break;
                 case OpCode.create:
                 case OpCode.create2:
@@ -92,11 +93,12 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 case OpCode.setACL:
                 case OpCode.multi:
                 case OpCode.check:
+                    //如果是事务请求直接请求Leader
                     zks.getFollower().request(request);
                     break;
                 case OpCode.createSession:
                 case OpCode.closeSession:
-                    // Don't forward local sessions to the leader.
+                    //如果是createSession请求，判断是否是localSession
                     if (!request.isLocalSession()) {
                         zks.getFollower().request(request);
                     }

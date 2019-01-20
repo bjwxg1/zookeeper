@@ -80,19 +80,20 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
     /**
      * Incoming requests.
      */
-    //从上一个Processor传递进来的Request，等待过半ACK的Request
+    //从上一个Processor传递进来的Request，只有事务性request会添加到pendingRequests
     protected LinkedBlockingQueue<Request> queuedRequests = new LinkedBlockingQueue<Request>();
 
     /**
      * Requests that have been committed.
      */
-    //Leader接收到足够的ack后添加进来的Request
+    //接收到committed消息的request
     protected final LinkedBlockingQueue<Request> committedRequests = new LinkedBlockingQueue<Request>();
 
     /**
      * Requests that we are holding until commit comes in. Keys represent
      * session ids, each value is a linked list of the session's requests.
      */
+    //等待提交信息的request。需要和committedRequests进行匹配。key-->session
     protected final Map<Long, LinkedList<Request>> pendingRequests = new HashMap<Long, LinkedList<Request>>(10000);
 
     /** The number of requests currently being processed */
@@ -105,7 +106,9 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
     protected volatile boolean stoppedMainLoop = true; 
     protected volatile boolean stopped = true;
     private long workerShutdownTimeoutMS;
+    //request交给下一个Processor进行处理时都在workerPool中处理
     protected WorkerService workerPool;
+    //在workerPool上的监视器
     private Object emptyPoolSync = new Object();
 
     /**
@@ -170,6 +173,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
                  * request from a client on another server (i.e., the order of
                  * the following two lines is important!).
                  */
+                //判断committedRequests是否为空
                 commitIsWaiting = !committedRequests.isEmpty();
                 requestsToProcess =  queuedRequests.size();
                 // Avoid sync if we have something to do
@@ -205,7 +209,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
                         requests.addLast(request);
                     }
                     else {
-                        //提交下一个Processor处理
+                        //如果request不需提交，提交下一个Processor处理
                         sendToNextProcessor(request);
                     }
                     /*
@@ -306,6 +310,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
                      * Process following reads if any, remove session queue if
                      * empty.
                      */
+                    //将事务请求交个下一个Processor处理
                     if (sessionQueue != null) {
                         while (!stopped && !sessionQueue.isEmpty() && !needCommit(sessionQueue.peek())) {
                             sendToNextProcessor(sessionQueue.poll());

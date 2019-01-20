@@ -971,6 +971,7 @@ public class Leader {
             // the zxid of the last write op.
             if (request.getHdr() != null) {
                 long zxid = request.getHdr().getZxid();
+                //遍历toBeApplied队列删除匹配的Proposal
                 Iterator<Proposal> iter = leader.toBeApplied.iterator();
                 if (iter.hasNext()) {
                     Proposal p = iter.next();
