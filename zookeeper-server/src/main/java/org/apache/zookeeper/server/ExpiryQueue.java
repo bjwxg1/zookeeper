@@ -42,7 +42,7 @@ public class ExpiryQueue<E> {
      * so the expirationInterval should not be too small compared to the
      * max timeout that this expiry queue needs to maintain.
      */
-    //根据过期时间进行分桶保存；key--》过期时间
+    //根据过期时间进行分桶保存；key--》过期时间；Set:该分桶上的元素集合
     private final ConcurrentHashMap<Long, Set<E>> expiryMap = new ConcurrentHashMap<Long, Set<E>>();
 
     //下次过期检测时间
@@ -55,7 +55,7 @@ public class ExpiryQueue<E> {
         nextExpirationTime.set(roundToNextInterval(Time.currentElapsedTime()));
     }
 
-    //更具time计算下次检测时间
+    //根据time计算下次检测时间
     private long roundToNextInterval(long time) {
         return (time / expirationInterval + 1) * expirationInterval;
     }
