@@ -143,16 +143,17 @@ public class ZooKeeperServerMain {
             // Registers shutdown handler which will be used to know the
             // server error or shutdown state changes.
             final CountDownLatch shutdownLatch = new CountDownLatch(1);
+            //注册ZooKeeperServerShutdownHandler，当服务器状态变更时会尝试调用
             zkServer.registerServerShutdownHandler(new ZooKeeperServerShutdownHandler(shutdownLatch));
 
-            // Start Admin server
+            //创建并启动adminServer
             adminServer = AdminServerFactory.createAdminServer();
             adminServer.setZooKeeperServer(zkServer);
             adminServer.start();
 
             boolean needStartZKServer = true;
             if (config.getClientPortAddress() != null) {
-                //创建并启动ServerCnxnFactory
+                //创建并启动ServerCnxnFactory，负责接收客户端请求
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
                 cnxnFactory.startup(zkServer);

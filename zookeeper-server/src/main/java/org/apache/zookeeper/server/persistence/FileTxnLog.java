@@ -321,7 +321,7 @@ public class FileTxnLog implements TxnLog {
         long logZxid = 0;
         // Find the log file that starts before or at the same time as the
         // zxid of the snapshot
-        //获取zxid<=snapshotZxid的事务日志文件
+        //注意logZxid[小于等于snapshotZxid但最接近的]
         for (File f : files) {
             long fzxid = Util.getZxidFromName(f.getName(), LOG_FILE_PREFIX);
             if (fzxid > snapshotZxid) {
@@ -334,6 +334,7 @@ public class FileTxnLog implements TxnLog {
             }
         }
         List<File> v=new ArrayList<File>(5);
+        //保存所有大于等于logZxid的日志文件
         for (File f : files) {
             long fzxid = Util.getZxidFromName(f.getName(), LOG_FILE_PREFIX);
             if (fzxid < logZxid) {

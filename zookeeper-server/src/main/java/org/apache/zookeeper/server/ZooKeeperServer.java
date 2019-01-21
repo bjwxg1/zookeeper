@@ -471,12 +471,12 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
         //启动SessionTracker
         startSessionTracker();
-        //设置RequestProcess
+        //设置RequestProcessor
         setupRequestProcessors();
 
         //注册JMX
         registerJMX();
-
+        //设置服务器状态为running
         setState(State.RUNNING);
         notifyAll();
     }

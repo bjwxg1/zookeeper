@@ -117,6 +117,7 @@ public class QuorumPeerMain {
     {
         //创建并解析Config配置
         QuorumPeerConfig config = new QuorumPeerConfig();
+        //如果没有入参，会使用默认的配置
         if (args.length == 1) {
             config.parse(args[0]);
         }
