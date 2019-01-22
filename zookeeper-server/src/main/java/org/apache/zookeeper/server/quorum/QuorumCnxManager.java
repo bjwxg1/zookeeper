@@ -89,7 +89,7 @@ public class QuorumCnxManager {
     /*
      * Maximum capacity of thread queues
      */
-    //接受消除队列默认大小
+    //接受消息队列默认大小
     static final int RECV_CAPACITY = 100;
     // Initialized to 1 to prevent sending
     // stale notifications to peers
@@ -132,8 +132,7 @@ public class QuorumCnxManager {
     //sasl连接需要异步处理，该线程池就是进行异步处理的线程
     private ThreadPoolExecutor connectionExecutor;
     //正在建立连接过程中的授权链接
-    private final Set<Long> inprogressConnections = Collections
-            .synchronizedSet(new HashSet<Long>());
+    private final Set<Long> inprogressConnections = Collections.synchronizedSet(new HashSet<Long>());
     private QuorumAuthServer authServer;
     private QuorumAuthLearner authLearner;
     private boolean quorumSaslAuthEnabled;

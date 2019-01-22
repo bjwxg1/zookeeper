@@ -176,7 +176,7 @@ public class QuorumPeerMain {
               secureCnxnFactory.configure(config.getSecureClientPortAddress(), config.getMaxClientCnxns(), true);
           }
 
-          //创建quorumPeer
+          //创建quorumPeer[quorumPeer代表Zookeeper集群中的一个节点]
           quorumPeer = getQuorumPeer();
           quorumPeer.setRootMetricsContext(metricsProvider.getRootContext());
           //创建并设置FileTxnSnapLog，FileTxnSnapLog作为中间层提供Zookeeper对底层日志的访问和操作
@@ -185,28 +185,28 @@ public class QuorumPeerMain {
           quorumPeer.enableLocalSessionsUpgrading(config.isLocalSessionsUpgradingEnabled());
           //quorumPeer.setQuorumPeers(config.getAllMembers());
           //基本参数设置
-          quorumPeer.setElectionType(config.getElectionAlg());
-          quorumPeer.setMyid(config.getServerId());
-          quorumPeer.setTickTime(config.getTickTime());
+          quorumPeer.setElectionType(config.getElectionAlg());//设置选举算法
+          quorumPeer.setMyid(config.getServerId());//设置及myId
+          quorumPeer.setTickTime(config.getTickTime());//设置tickTime
           quorumPeer.setMinSessionTimeout(config.getMinSessionTimeout());
           quorumPeer.setMaxSessionTimeout(config.getMaxSessionTimeout());
-          quorumPeer.setInitLimit(config.getInitLimit());
-          quorumPeer.setSyncLimit(config.getSyncLimit());
+          quorumPeer.setInitLimit(config.getInitLimit());//设置initLimit
+          quorumPeer.setSyncLimit(config.getSyncLimit());//设置syncLimit
           quorumPeer.setConfigFileName(config.getConfigFilename());
           //创建并设置ZKDataBase
           quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
-          quorumPeer.setQuorumVerifier(config.getQuorumVerifier(), false);
+          quorumPeer.setQuorumVerifier(config.getQuorumVerifier(), false);//设置QuorumVerifier
           //设置集群验证器，主要用于判断配置是否能构成集群
           if (config.getLastSeenQuorumVerifier()!=null) {
               quorumPeer.setLastSeenQuorumVerifier(config.getLastSeenQuorumVerifier(), false);
           }
           //将集群的配置信息添加到Zookeeper config节点
           quorumPeer.initConfigInZKDatabase();
-          quorumPeer.setCnxnFactory(cnxnFactory);
+          quorumPeer.setCnxnFactory(cnxnFactory);//设置CnxnFactory
           quorumPeer.setSecureCnxnFactory(secureCnxnFactory);
           quorumPeer.setSslQuorum(config.isSslQuorum());
           quorumPeer.setUsePortUnification(config.shouldUsePortUnification());
-          quorumPeer.setLearnerType(config.getPeerType());
+          quorumPeer.setLearnerType(config.getPeerType());//设置节点类型
           quorumPeer.setSyncEnabled(config.getSyncEnabled());
           quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
 

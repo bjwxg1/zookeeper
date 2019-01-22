@@ -409,7 +409,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     /*
      * Record leader election time
      */
-    //选举开始和结束事件
+    //选举开始和结束时间
     public long start_fle, end_fle; // fle = fast leader election
     public static final String FLE_TIME_UNIT = "MS";
 
@@ -805,7 +805,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         quorumStats = new QuorumStats(this);
         jmxRemotePeerBean = new HashMap<Long, RemotePeerBean>();
         adminServer = AdminServerFactory.createAdminServer();
-        initialize();
+        initialize();//初始化authServer和authLeaner
     }
 
     /**
@@ -878,6 +878,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
         //开始选举
         startLeaderElection();
+        //启动QuorumPeer
         super.start();
     }
 
@@ -1051,10 +1052,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             le = new AuthFastLeaderElection(this, true);
             break;
         case 3:
+            //创建QuorumCnxManager
             qcm = createCnxnManager();
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
-                //启动连接监听线程
+                //启动选举端口连接监听线程
                 listener.start();
                 //创建FastLeaderElection并启动
                 FastLeaderElection fle = new FastLeaderElection(this, qcm);
