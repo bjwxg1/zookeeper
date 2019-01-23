@@ -127,6 +127,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     //存储数据
     private ZKDatabase zkDb;
 
+    //Zookeeper节点的Server信息
     public static class QuorumServer {
         public InetSocketAddress addr = null;
         public InetSocketAddress electionAddr = null;
@@ -868,7 +869,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
          }
          //加载database
         loadDataBase();
-        //启动ServerCnxnFactory，主要用于处理客户端连接
+        //启动ServerCnxnFactory，主要用于处理客户端连接和请求
         startServerCnxnFactory();
         try {
             adminServer.start();
@@ -935,6 +936,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
     synchronized public void startLeaderElection() {
         try {
+            //判断服务器状态
             if (getPeerState() == ServerState.LOOKING) {
                 //根据myid，最近事务ID和当前Epoch初始化选票
                 //将选票投给自己
@@ -945,7 +947,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             re.setStackTrace(e.getStackTrace());
             throw re;
         }
-
+        //创建ElectionAlgorithm
         this.electionAlg = createElectionAlgorithm(electionType);
     }
 
@@ -1052,7 +1054,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             le = new AuthFastLeaderElection(this, true);
             break;
         case 3:
-            //创建QuorumCnxManager
+            //创建QuorumCnxManager【是选举端口的Server】
             qcm = createCnxnManager();
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
@@ -1142,6 +1144,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
              * Main loop
              */
             while (running) {
+                //获取节点状态【在选举结束或者需要重新选举是节点状态为发送改变】
                 switch (getPeerState()) {
                 case LOOKING:
                     LOG.info("LOOKING");
