@@ -323,7 +323,7 @@ public class Learner {
      * @return the zxid the Leader sends for synchronization purposes.
      * @throws IOException
      */
-    //1.follower节点向leader节点发送followerInfo消息[zxid]
+    //1.leaner节点向leader节点发送followerInfo或者ObserverInfo消息[zxid]
     //2.接收leader的LEADERINFO消息
     //3.向leader节点响应ACKEPOCH消息
     protected long registerWithLeader(int pktType) throws IOException{
@@ -343,9 +343,9 @@ public class Learner {
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
-        //发送followerInfo消息
+        //发送LearnerInfo消息
         writePacket(qp, true);
-        //读取leader节点关于followerInfo消息的响应
+        //读取leader节点关于LearnerInfo消息的响应
         readPacket(qp);        
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
 		if (qp.getType() == Leader.LEADERINFO) {
@@ -366,6 +366,7 @@ public class Learner {
         		throw new IOException("Leaders epoch, " + newEpoch + " is less than accepted epoch, " + self.getAcceptedEpoch());
         	}
         	QuorumPacket ackNewEpoch = new QuorumPacket(Leader.ACKEPOCH, lastLoggedZxid, epochBytes, null);
+        	//发送ACKEPOCH消息
         	writePacket(ackNewEpoch, true);
             return ZxidUtils.makeZxid(newEpoch, 0);
         } else {

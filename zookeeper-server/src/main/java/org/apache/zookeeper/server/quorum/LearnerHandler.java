@@ -377,6 +377,7 @@ public class LearnerHandler extends ZooKeeperThread {
     @Override
     public void run() {
         try {
+            //添加到learners
             leader.addLearnerHandler(this);
             //设置tickOfNextAckDeadline
             tickOfNextAckDeadline = leader.self.tick.get() + leader.self.initLimit + leader.self.syncLimit;
@@ -384,7 +385,6 @@ public class LearnerHandler extends ZooKeeperThread {
             ia = BinaryInputArchive.getArchive(bufferedInput);
             bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
             oa = BinaryOutputArchive.getArchive(bufferedOutput);
-
             QuorumPacket qp = new QuorumPacket();
             ia.readRecord(qp, "packet");
             //[LearnerHandler接收的第一条消息类型必须是FOLLOWERINFO和OBSERVERINFO]
@@ -413,6 +413,7 @@ public class LearnerHandler extends ZooKeeperThread {
                     }
                 }
             } else {
+                //Obserer不需要配置sid
                 this.sid = leader.followerCounter.getAndDecrement();
             }
 
@@ -430,12 +431,11 @@ public class LearnerHandler extends ZooKeeperThread {
 
             //解析learner的epoch
             long lastAcceptedEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
-
             long peerLastZxid;
             StateSummary ss = null;
             //解析learner的zxid
             long zxid = qp.getZxid();
-            //生成新的epoc和zxid
+            //生成新的epoc和LeaderZxid
             long newEpoch = leader.getEpochToPropose(this.getSid(), lastAcceptedEpoch);
             long newLeaderZxid = ZxidUtils.makeZxid(newEpoch, 0);
 
@@ -444,7 +444,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 long epoch = ZxidUtils.getEpochFromZxid(zxid);
                 ss = new StateSummary(epoch, zxid);
                 // fake the message
-                //等待多数Learner连接上
+                //等待多数Learner响应LEADERINFO
                 leader.waitForEpochAck(this.getSid(), ss);
             } else {
                 byte ver[] = new byte[4];
@@ -462,7 +462,7 @@ public class LearnerHandler extends ZooKeeperThread {
 				}
                 ByteBuffer bbepoch = ByteBuffer.wrap(ackEpochPacket.getData());
                 ss = new StateSummary(bbepoch.getInt(), ackEpochPacket.getZxid());
-                //等待多数Learner连接上
+                //等待多数Learner响应LEADERINFO
                 leader.waitForEpochAck(this.getSid(), ss);
             }
             peerLastZxid = ss.getLastZxid();
@@ -471,12 +471,12 @@ public class LearnerHandler extends ZooKeeperThread {
             // startForwarding() will be called in all cases
             //判断是否需要同snapshot的方式进行同步
             boolean needSnap = syncFollower(peerLastZxid, leader.zk.getZKDatabase(), leader);
-
             /* if we are not truncating or sending a diff just send a snapshot */
             if (needSnap) {
                 boolean exemptFromThrottle = getLearnerType() != LearnerType.OBSERVER;
                 LearnerSnapshot snapshot = leader.getLearnerSnapshotThrottler().beginSnapshot(exemptFromThrottle);
                 try {
+                    //发送SNAP信息
                     long zxidToSend = leader.zk.getZKDatabase().getDataTreeLastProcessedZxid();
                     oa.writeRecord(new QuorumPacket(Leader.SNAP, zxidToSend, null, null), "packet");
                     bufferedOutput.flush();
@@ -507,6 +507,7 @@ public class LearnerHandler extends ZooKeeperThread {
             // the version of this quorumVerifier will be set by leader.lead() in case
             // the leader is just being established. waitForEpochAck makes sure that readyToStart is true if
             // we got here, so the version was set
+            //数据同步完毕，发送NEWLEADER信息
             if (getVersion() < 0x10000) {
                 QuorumPacket newLeaderQP = new QuorumPacket(Leader.NEWLEADER, newLeaderZxid, null, null);
                 oa.writeRecord(newLeaderQP, "packet");
@@ -525,6 +526,7 @@ public class LearnerHandler extends ZooKeeperThread {
              * the leader is ready, and only then we can
              * start processing messages.
              */
+            //读取NEWLEADER的ACK
             qp = new QuorumPacket();
             ia.readRecord(qp, "packet");
             if(qp.getType() != Leader.ACK){

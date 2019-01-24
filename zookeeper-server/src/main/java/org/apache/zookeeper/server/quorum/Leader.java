@@ -403,11 +403,13 @@ public class Leader {
                         Socket s = ss.accept();
                         // start with the initLimit, once the ack is processed
                         // in LearnerHandler switch to the syncLimit
+                        //设置soTimeout
                         s.setSoTimeout(self.tickTime * self.initLimit);
+                        //设置tcpNoDelay
                         s.setTcpNoDelay(nodelay);
 
                         BufferedInputStream is = new BufferedInputStream(s.getInputStream());
-                        //创建LearnerHandler并启动【没接收到一个连接就创建一个】
+                        //创建LearnerHandler并启动【每接收到一个连接就创建一个】
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -495,10 +497,8 @@ public class Leader {
                 lastProposed = zk.getZxid();
             }
 
-            //创建NEWLEADER
+            //创建NEWLEADER信息
             newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(), null, null);
-
-
             if ((newLeaderProposal.packet.getZxid() & 0xffffffffL) != 0) {
                 LOG.info("NEWLEADER proposal has Zxid of " + Long.toHexString(newLeaderProposal.packet.getZxid()));
             }
@@ -542,37 +542,41 @@ public class Leader {
             // We have to get at least a majority of servers in sync with
             // us. We do this by waiting for the NEWLEADER packet to get
             // acknowledged
-
+            //Follower和Observer在连接到Leader后分别发送FollowerInfo和ObserverInfo信息
+            //然后leader向Follower和Observer发送LEADERINFO信息；
+            // Follower和Observer收到LEADERINFO信息后发送ACKEPOCH信息此处就是等待收到过半的ACKEPOCH
              waitForEpochAck(self.getId(), leaderStateSummary);
              //设置currentEpoch
              self.setCurrentEpoch(epoch);
 
              try {
-                 waitForNewLeaderAck(self.getId(), zk.getZxid());
-             } catch (InterruptedException e) {
-                 shutdown("Waiting for a quorum of followers, only synced with sids: [ "
-                         + newLeaderProposal.ackSetsToString() + " ]");
-                 HashSet<Long> followerSet = new HashSet<Long>();
+                //在进行数据同步完成后，Leader会向Follwer发送NEWLEADER信息，然后Follower响应ACK,此处等待过半的ack
+                waitForNewLeaderAck(self.getId(), zk.getZxid());
+            } catch (InterruptedException e) {
+                shutdown("Waiting for a quorum of followers, only synced with sids: [ "
+                        + newLeaderProposal.ackSetsToString() + " ]");
+                HashSet<Long> followerSet = new HashSet<Long>();
 
-                 for(LearnerHandler f : getLearners()) {
-                     if (self.getQuorumVerifier().getVotingMembers().containsKey(f.getSid())){
-                         followerSet.add(f.getSid());
-                     }
-                 }
-                 boolean initTicksShouldBeIncreased = true;
-                 for (Proposal.QuorumVerifierAcksetPair qvAckset:newLeaderProposal.qvAcksetPairs) {
-                     if (!qvAckset.getQuorumVerifier().containsQuorum(followerSet)) {
-                         initTicksShouldBeIncreased = false;
-                         break;
-                     }
-                 }
-                 if (initTicksShouldBeIncreased) {
-                     LOG.warn("Enough followers present. "+
-                             "Perhaps the initTicks need to be increased.");
-                 }
-                 return;
-             }
+                for(LearnerHandler f : getLearners()) {
+                    if (self.getQuorumVerifier().getVotingMembers().containsKey(f.getSid())){
+                        followerSet.add(f.getSid());
+                    }
+                }
+                boolean initTicksShouldBeIncreased = true;
+                for (Proposal.QuorumVerifierAcksetPair qvAckset:newLeaderProposal.qvAcksetPairs) {
+                    if (!qvAckset.getQuorumVerifier().containsQuorum(followerSet)) {
+                        initTicksShouldBeIncreased = false;
+                        break;
+                    }
+                }
+                if (initTicksShouldBeIncreased) {
+                    LOG.warn("Enough followers present. "+
+                            "Perhaps the initTicks need to be increased.");
+                }
+                return;
+            }
 
+            //启动ZookeeperServer
              startZkServer();
 
             /**
@@ -663,6 +667,7 @@ public class Leader {
                     tickSkip = !tickSkip;
                 }
                 for (LearnerHandler f : getLearners()) {
+                    //发送ping消息
                     f.ping();
                 }
             }
