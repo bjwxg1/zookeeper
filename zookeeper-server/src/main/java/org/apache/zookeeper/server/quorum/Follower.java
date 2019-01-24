@@ -66,6 +66,7 @@ public class Follower extends Learner{
      * @throws InterruptedException
      */
     void followLeader() throws InterruptedException {
+        //计算并设置选举耗时
         self.end_fle = Time.currentElapsedTime();
         long electionTimeTaken = self.end_fle - self.start_fle;
         self.setElectionTimeTaken(electionTimeTaken);
@@ -80,7 +81,7 @@ public class Follower extends Learner{
             try {
                 //连接到leader
                 connectToLeader(leaderServer.addr, leaderServer.hostname);
-                //向Leader注册，发送FollowerInfo
+                //向Leader注册，发送FollowerInfo信息
                 long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO);
                 if (self.isReconfigStateChange())
                    throw new Exception("learned about role change");

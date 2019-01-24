@@ -19,14 +19,6 @@
 
 package org.apache.zookeeper.server.quorum;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.zookeeper.common.Time;
 import org.apache.zookeeper.jmx.MBeanRegistry;
 import org.apache.zookeeper.server.ZooKeeperThread;
@@ -38,6 +30,14 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.ZxidUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
@@ -813,10 +813,13 @@ public class FastLeaderElection implements Election {
          * from leader stating that it is leading, then predicate is false.
          */
 
-        if(leader != self.getId()){
-            if(votes.get(leader) == null) predicate = false;
-            else if(votes.get(leader).getState() != ServerState.LEADING) predicate = false;
-        } else if(logicalclock.get() != electionEpoch) {
+        if (leader != self.getId()) {
+            if (votes.get(leader) == null) {
+                predicate = false;
+            } else if (votes.get(leader).getState() != ServerState.LEADING) {
+                predicate = false;
+            }
+        } else if (logicalclock.get() != electionEpoch) {
             predicate = false;
         }
 
@@ -934,7 +937,7 @@ public class FastLeaderElection implements Election {
             int notTimeout = finalizeWait;
             //第一次投票时会将选票投给自己
             synchronized(this){
-                //增加逻辑时钟
+                //增加逻辑时钟【需要注意的每发起一次投票增加1】
                 logicalclock.incrementAndGet();
                 //更新投票信息[先将票投给自己]
                 updateProposal(getInitId(), getInitLastLoggedZxid(), getPeerEpoch());

@@ -88,7 +88,7 @@ public class Vote {
     final private long id;
     //被推举为leader的机器最大的事务ID
     final private long zxid;
-    //逻辑适时钟，用来判断多个投票是否在同一个选举周期中。
+    //逻辑时钟，用来判断多个投票是否在同一个选举周期中。
     //该值在服务器端时一个自增序列。每次进入新一轮的投票后，都会对该值 + 1。
     final private long electionEpoch;
     //被推举Leader的机器的epoch。

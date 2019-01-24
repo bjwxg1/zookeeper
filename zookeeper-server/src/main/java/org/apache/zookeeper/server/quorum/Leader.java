@@ -407,7 +407,7 @@ public class Leader {
                         s.setTcpNoDelay(nodelay);
 
                         BufferedInputStream is = new BufferedInputStream(s.getInputStream());
-                        //创建LearnerHandler并启动
+                        //创建LearnerHandler并启动【没接收到一个连接就创建一个】
                         LearnerHandler fh = new LearnerHandler(s, is, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -465,7 +465,7 @@ public class Leader {
      */
     void lead() throws IOException, InterruptedException {
         self.end_fle = Time.currentElapsedTime();
-        //选举耗时
+        //计算并设置选举耗时
         long electionTimeTaken = self.end_fle - self.start_fle;
         self.setElectionTimeTaken(electionTimeTaken);
         ServerMetrics.ELECTION_TIME.add(electionTimeTaken);
@@ -484,18 +484,18 @@ public class Leader {
 
             // Start thread that waits for connection requests from
             // new followers.
-            //创建并启动Acceptor线程
+            //创建并启动Acceptor线程，负责接收Follower和Observer的连接
             cnxAcceptor = new LearnerCnxAcceptor();
             cnxAcceptor.start();
 
+            //创建并设置Zxid【因为每次选举要增加Epoch】
             long epoch = getEpochToPropose(self.getId(), self.getAcceptedEpoch());
-
             zk.setZxid(ZxidUtils.makeZxid(epoch, 0));
-
             synchronized(this){
                 lastProposed = zk.getZxid();
             }
 
+            //创建NEWLEADER
             newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(), null, null);
 
 
