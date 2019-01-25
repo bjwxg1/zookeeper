@@ -323,9 +323,9 @@ public class Learner {
      * @return the zxid the Leader sends for synchronization purposes.
      * @throws IOException
      */
-    //1.leaner节点向leader节点发送followerInfo或者ObserverInfo消息[zxid]
+    //1.leaner节点向leader节点发送followerInfo或者ObserverInfo消息[sid]
     //2.接收leader的LEADERINFO消息
-    //3.向leader节点响应ACKEPOCH消息
+    //3.向leader节点响应ACKEPOCH消息【lastLoggedZxid】
     protected long registerWithLeader(int pktType) throws IOException{
         /*
          * Send follower info, including last zxid and sid
@@ -338,6 +338,7 @@ public class Learner {
         /*
          * Add sid to payload
          */
+        //发送FollowerInfo信息或者ObserverInfo信息
         LearnerInfo li = new LearnerInfo(self.getId(), 0x10000, self.getQuorumVerifier().getVersion());
         ByteArrayOutputStream bsid = new ByteArrayOutputStream();
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
@@ -354,6 +355,7 @@ public class Learner {
         	byte epochBytes[] = new byte[4];
         	final ByteBuffer wrappedEpochBytes = ByteBuffer.wrap(epochBytes);
         	if (newEpoch > self.getAcceptedEpoch()) {
+        	    //将当前的learner节点的Epoch信息发送给Leader
         		wrappedEpochBytes.putInt((int)self.getCurrentEpoch());
         		self.setAcceptedEpoch(newEpoch);
         	} else if (newEpoch == self.getAcceptedEpoch()) {

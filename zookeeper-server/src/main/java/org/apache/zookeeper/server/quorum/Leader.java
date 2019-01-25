@@ -1291,6 +1291,7 @@ public class Leader {
                 connectingFollowers.add(sid);
             }
             QuorumVerifier verifier = self.getQuorumVerifier();
+            //已经有过半的Follower连接上
             if (connectingFollowers.contains(self.getId()) && verifier.containsQuorum(connectingFollowers)) {
                 waitingForNewEpoch = false;
                 //设置acceptedEpoch并写入文件
