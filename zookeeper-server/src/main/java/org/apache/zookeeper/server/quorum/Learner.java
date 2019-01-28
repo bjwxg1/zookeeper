@@ -395,14 +395,17 @@ public class Learner {
         long newEpoch = ZxidUtils.getEpochFromZxid(newLeaderZxid);
         
         QuorumVerifier newLeaderQV = null;
-        
+        //在diff同步过程中Leader会先发送Proposal然后在发送commit
+        //packetsNotCommitted保存收到的Proposal但是还有收到Commit的消息
+        LinkedList<Long> packetsCommitted = new LinkedList<Long>();
+        LinkedList<PacketInFlight> packetsNotCommitted = new LinkedList<PacketInFlight>();
         // In the DIFF case we don't need to do a snapshot because the transactions will sync on top of any existing snapshot
         // For SNAP and TRUNC the snapshot is needed to save that history
+        //对于Diff操作因为数据的同步是建立在snap之上的，所以接收到Proposal需要写入日志；
+        //对于SNAP和TRUNC操作既不需要写日志也不需要写内存
         boolean snapshotNeeded = true;
         boolean syncSnapshot = false;
         readPacket(qp);
-        LinkedList<Long> packetsCommitted = new LinkedList<Long>();
-        LinkedList<PacketInFlight> packetsNotCommitted = new LinkedList<PacketInFlight>();
         synchronized (zk) {
             if (qp.getType() == Leader.DIFF) {
                 LOG.info("Getting a diff from the leader 0x{}", Long.toHexString(qp.getZxid()));
@@ -412,6 +415,7 @@ public class Learner {
                 LOG.info("Getting a snapshot from leader 0x" + Long.toHexString(qp.getZxid()));
                 // The leader is going to dump the database
                 // db is clear as part of deserializeSnapshot()
+                //进行反序列化
                 zk.getZKDatabase().deserializeSnapshot(leaderIs);
                 // ZOOKEEPER-2819: overwrite config node content extracted
                 // from leader snapshot with local config, to avoid potential
@@ -428,7 +432,7 @@ public class Learner {
                 zk.getZKDatabase().setlastProcessedZxid(qp.getZxid());
 
                 // immediately persist the latest snapshot when there is txn log gap
-                syncSnapshot = true;
+                syncSnapshot = true;//需要强制刷盘
             } else if (qp.getType() == Leader.TRUNC) {
                 //we need to truncate the log to the lastzxid of the leader
                 LOG.warn("Truncating log to get in sync with the leader 0x" + Long.toHexString(qp.getZxid()));
@@ -455,6 +459,7 @@ public class Learner {
             // in Zab V1.0 (ZK 3.4+) we might take a snapshot when we get the NEWLEADER message, but in pre V1.0
             // we take the snapshot on the UPDATE message, since Zab V1.0 also gets the UPDATE (after the NEWLEADER)
             // we need to make sure that we don't take the snapshot twice.
+            //在3.4+版本收到NEWLEADER命令就生成快照文件。在低版本收到UPTODATE命名生成快照文件。防止重复生成
             boolean isPreZAB1_0 = true;
             //If we are not going to take the snapshot be sure the transactions are not applied in memory
             // but written out to the transaction log
@@ -506,7 +511,7 @@ public class Learner {
                         packetsCommitted.add(qp.getZxid());
                     }
                     break;
-                case Leader.INFORM:
+                case Leader.INFORM://对于Follower来说是先收到Proposal消息然后在收到commit，对于Observer则只有INFORM消息
                 case Leader.INFORMANDACTIVATE:
                     PacketInFlight packet = new PacketInFlight();
                     packet.hdr = new TxnHeader();
@@ -558,7 +563,7 @@ public class Learner {
                     }
                     self.setZooKeeperServer(zk);
                     self.adminServer.setZooKeeperServer(zk);
-                    break outerLoop;
+                    break outerLoop;//跳出循环
                 case Leader.NEWLEADER: // Getting NEWLEADER here instead of in discovery 
                     // means this is Zab 1.0
                    LOG.info("Learner received NEWLEADER message");
@@ -572,6 +577,7 @@ public class Learner {
                        }
                    }
 
+                   //生成snapShot
                    if (snapshotNeeded) {
                        zk.takeSnapshot(syncSnapshot);
                    }
@@ -579,6 +585,7 @@ public class Learner {
                     self.setCurrentEpoch(newEpoch);
                     writeToTxnLog = true; //Anything after this needs to go to the transaction log, not applied directly in memory
                     isPreZAB1_0 = false;
+                    //响应ack消息
                     writePacket(new QuorumPacket(Leader.ACK, newLeaderZxid, null, null), true);
                     break;
                 }
@@ -587,6 +594,7 @@ public class Learner {
         ack.setZxid(ZxidUtils.makeZxid(newEpoch, 0));
         writePacket(ack, true);
         sock.setSoTimeout(self.tickTime * self.syncLimit);
+        //启动Server
         zk.startup();
         /*
          * Update the election vote here to ensure that all members of the
@@ -595,12 +603,14 @@ public class Learner {
          * 
          * @see https://issues.apache.org/jira/browse/ZOOKEEPER-1732
          */
+        //更新投票
         self.updateElectionVote(newEpoch);
 
         // We need to log the stuff that came in between the snapshot and the uptodate
         if (zk instanceof FollowerZooKeeperServer) {
             FollowerZooKeeperServer fzk = (FollowerZooKeeperServer)zk;
             for(PacketInFlight p: packetsNotCommitted) {
+                //写日志
                 fzk.logRequest(p.hdr, p.rec);
             }
             for(Long zxid: packetsCommitted) {

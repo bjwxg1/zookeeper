@@ -100,7 +100,6 @@ public class QuorumCnxManager {
     /*
      * Negative counter for observer server ids.
      */
-
     private AtomicLong observerCounter = new AtomicLong(-1);
 
     /*
@@ -116,7 +115,6 @@ public class QuorumCnxManager {
     /*
      * Connection time out value in milliseconds
      */
-
     private int cnxTO = 5000;
 
     final QuorumPeer self;
@@ -144,9 +142,9 @@ public class QuorumCnxManager {
     /*
      * Mapping from Peer to Thread number
      */
-    //为每一个节点定义一个SendWorker
+    //为每一个节点定义一个SendWorker，key--》sid
     final ConcurrentHashMap<Long, SendWorker> senderWorkerMap;
-    //为每一个server节点保存一个发送消息队列
+    //为每一个server节点保存一个发送消息队列，key--》sid
     final ConcurrentHashMap<Long, ArrayBlockingQueue<ByteBuffer>> queueSendMap;
     //为每一个server节点保存最近发送的消息
     final ConcurrentHashMap<Long, ByteBuffer> lastMessageSent;
@@ -203,7 +201,7 @@ public class QuorumCnxManager {
      * This class parses the initial identification sent out by peers with their
      * sid & hostname.
      */
-    //选举机器连接是发送的初始化消息
+    //选举机器连接时发送的初始化消息
     static public class InitialMessage {
         public Long sid;
         public InetSocketAddress electionAddr;
@@ -586,7 +584,7 @@ public class QuorumCnxManager {
         //If wins the challenge, then close the new connection.
         //如果sid小于当前server的myid则需要关闭已经建立的socket连接
         //Zookeeper server集群中所有的机器都会启动选举监听端口，并且两两建立连接
-        //如果减少建立的连接数，默认myid大的机器作为client连接到myid小的机器上
+        //为了减少建立的连接数，默认myid大的机器作为client连接到myid小的机器上
         if (sid < self.getId()) {
             /*
              * This replica might still believe that the connection to sid is

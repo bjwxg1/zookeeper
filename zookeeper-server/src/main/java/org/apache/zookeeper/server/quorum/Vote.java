@@ -22,7 +22,19 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.ServerState;
 
 
 public class Vote {
-    
+    final private int version;
+    //被推举为leader的机器的myid
+    final private long id;
+    //被推举为leader的机器最大的事务ID
+    final private long zxid;
+    //逻辑时钟，用来判断多个投票是否在同一个选举周期中。
+    //该值在服务器端时一个自增序列。每次进入新一轮的投票后,都会对该值+1。
+    final private long electionEpoch;
+    //被推举Leader的机器的epoch。
+    final private long peerEpoch;
+    //当前机器状态
+    final private ServerState state;
+
     public Vote(long id,
                     long zxid) {
         this.version = 0x0;
@@ -83,17 +95,9 @@ public class Vote {
         this.version = 0x0;
     }
 
-    final private int version;
-    //被推举为leader的机器的myid
-    final private long id;
-    //被推举为leader的机器最大的事务ID
-    final private long zxid;
-    //逻辑时钟，用来判断多个投票是否在同一个选举周期中。
-    //该值在服务器端时一个自增序列。每次进入新一轮的投票后，都会对该值 + 1。
-    final private long electionEpoch;
-    //被推举Leader的机器的epoch。
-    final private long peerEpoch;
-    
+
+
+
     public int getVersion() {
         return version;
     }
@@ -118,9 +122,7 @@ public class Vote {
         return state;
     }
 
-    //当前机器状态
-    final private ServerState state;
-    
+
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof Vote)) {
