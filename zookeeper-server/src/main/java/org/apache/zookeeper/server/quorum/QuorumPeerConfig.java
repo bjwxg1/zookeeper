@@ -90,6 +90,7 @@ public class QuorumPeerConfig {
     protected int maxSessionTimeout = -1;
     protected String metricsProviderClassName = NullMetricsProvider.class.getName();
     protected Properties metricsProviderConfiguration = new Properties();
+    //TODO
     protected boolean localSessionsEnabled = false;
     protected boolean localSessionsUpgradingEnabled = false;
 
@@ -100,6 +101,8 @@ public class QuorumPeerConfig {
     protected int electionAlg = 3;
     //默认选举端口
     protected int electionPort = 2182;
+    //设置为true时，ZooKeeper服务器将在所有可用IP地址上侦听来自其对等方的连接，而不仅是在配置文件的服务器列表中配置的地址。
+    // 它会影响处理ZAB协议和快速领导者选举协议的连接。 默认值为false。
     protected boolean quorumListenOnAllIPs = false;
 
     protected long serverId = UNSET_SERVERID;
@@ -447,6 +450,7 @@ public class QuorumPeerConfig {
         // backward compatibility - dynamic configuration in the same file as
         // static configuration params see writeDynamicConfig()
         if (dynamicConfigFileStr == null) {
+            //解析并创建quorumVerifier
             setupQuorumPeerConfig(zkProp, true);
             if (isDistributed() && isReconfigEnabled()) {
                 // we don't backup static config for standalone mode.
