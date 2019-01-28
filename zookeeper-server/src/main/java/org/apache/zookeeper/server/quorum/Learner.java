@@ -400,18 +400,22 @@ public class Learner {
         // For SNAP and TRUNC the snapshot is needed to save that history
         boolean snapshotNeeded = true;
         boolean syncSnapshot = false;
+        //读取数据包
         readPacket(qp);
         LinkedList<Long> packetsCommitted = new LinkedList<Long>();
         LinkedList<PacketInFlight> packetsNotCommitted = new LinkedList<PacketInFlight>();
         synchronized (zk) {
+            //同步类型为DIFF
             if (qp.getType() == Leader.DIFF) {
                 LOG.info("Getting a diff from the leader 0x{}", Long.toHexString(qp.getZxid()));
-                snapshotNeeded = false;
+                snapshotNeeded = false;//设置snapshotNeeded为false
             }
+            //SNAP方式的同步
             else if (qp.getType() == Leader.SNAP) {
                 LOG.info("Getting a snapshot from leader 0x" + Long.toHexString(qp.getZxid()));
                 // The leader is going to dump the database
                 // db is clear as part of deserializeSnapshot()
+                //反序列化Leader的snapshot信息
                 zk.getZKDatabase().deserializeSnapshot(leaderIs);
                 // ZOOKEEPER-2819: overwrite config node content extracted
                 // from leader snapshot with local config, to avoid potential
@@ -429,9 +433,12 @@ public class Learner {
 
                 // immediately persist the latest snapshot when there is txn log gap
                 syncSnapshot = true;
-            } else if (qp.getType() == Leader.TRUNC) {
+            }
+            //TRUNC类型的同步
+            else if (qp.getType() == Leader.TRUNC) {
                 //we need to truncate the log to the lastzxid of the leader
                 LOG.warn("Truncating log to get in sync with the leader 0x" + Long.toHexString(qp.getZxid()));
+                //进行TRUNC操作
                 boolean truncated=zk.getZKDatabase().truncateLog(qp.getZxid());
                 if (!truncated) {
                     // not able to truncate the log
@@ -462,9 +469,10 @@ public class Learner {
             // we are now going to start getting transactions to apply followed by an UPTODATE
             outerLoop:
             while (self.isRunning()) {
+                //读取数据包
                 readPacket(qp);
                 switch(qp.getType()) {
-                case Leader.PROPOSAL:
+                case Leader.PROPOSAL://如果是Proposal添加到packetsNotCommitted队列
                     PacketInFlight pif = new PacketInFlight();
                     pif.hdr = new TxnHeader();
                     pif.rec = SerializeUtils.deserializeTxn(qp.getData(), pif.hdr);
@@ -503,6 +511,7 @@ public class Learner {
                             packetsNotCommitted.remove();
                         }
                     } else {
+                        //添加到Committed队列
                         packetsCommitted.add(qp.getZxid());
                     }
                     break;
