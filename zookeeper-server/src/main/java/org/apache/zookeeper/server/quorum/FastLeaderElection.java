@@ -150,26 +150,6 @@ public class FastLeaderElection implements Election {
      */
     //发送通知使用的数据结构
     static public class ToSend {
-        static enum mType {crequest, challenge, notification, ack}
-
-        ToSend(mType type,
-                long leader,
-                long zxid,
-                long electionEpoch,
-                ServerState state,
-                long sid,
-                long peerEpoch,
-                byte[] configData) {
-
-            this.leader = leader;
-            this.zxid = zxid;
-            this.electionEpoch = electionEpoch;
-            this.state = state;
-            this.sid = sid;
-            this.peerEpoch = peerEpoch;
-            this.configData = configData;
-        }
-
         /*
          * Proposed leader in the case of notification
          */
@@ -210,6 +190,27 @@ public class FastLeaderElection implements Election {
          */
         //推荐的leader的选举周期
         long peerEpoch;
+        static enum mType {crequest, challenge, notification, ack}
+
+        ToSend(mType type,
+                long leader,
+                long zxid,
+                long electionEpoch,
+                ServerState state,
+                long sid,
+                long peerEpoch,
+                byte[] configData) {
+
+            this.leader = leader;
+            this.zxid = zxid;
+            this.electionEpoch = electionEpoch;
+            this.state = state;
+            this.sid = sid;
+            this.peerEpoch = peerEpoch;
+            this.configData = configData;
+        }
+
+
     }
 
     //待发送的消息列表
@@ -364,6 +365,7 @@ public class FastLeaderElection implements Election {
 
                             // State of peer that sent this message
                             QuorumPeer.ServerState ackstate = QuorumPeer.ServerState.LOOKING;
+                            //确定投票者状态
                             switch (rstate) {
                             case 0:
                                 ackstate = QuorumPeer.ServerState.LOOKING;
@@ -410,7 +412,7 @@ public class FastLeaderElection implements Election {
                                  * lagging behind.
                                  */
                                 //如果ackstate也是LOOKING，并且接收到的n.electionEpoch< logicalclock.get()
-                                //此事会将自己投票信息添加到待发送队列，发送给对方
+                                //此时会将自己投票信息添加到待发送队列，发送给对方
                                 if((ackstate == QuorumPeer.ServerState.LOOKING)
                                         && (n.electionEpoch < logicalclock.get())){
                                     Vote v = getVote();
@@ -431,10 +433,10 @@ public class FastLeaderElection implements Election {
                                  * If this server is not looking, but the one that sent the ack
                                  * is looking, then send back what it believes to be the leader.
                                  */
-                                //如果当前节点的状态不是Looking
+                                //如果当前节点的状态不是Looking，并且对方是Looking状态，那么将自己认为是Leader的信息发送给对方
                                 Vote current = self.getCurrentVote();
                                 if(ackstate == QuorumPeer.ServerState.LOOKING){
-                                    if (self.leader != null) {
+                                    if (self.leader != null) {//判断是否是Leader
                                         if (leadingVoteSet != null) {
                                             self.leader.setLeadingVoteSet(leadingVoteSet);
                                             leadingVoteSet = null;
@@ -495,7 +497,6 @@ public class FastLeaderElection implements Election {
                     try {
                         ToSend m = sendqueue.poll(3000, TimeUnit.MILLISECONDS);
                         if(m == null) continue;
-
                         process(m);
                     } catch (InterruptedException e) {
                         break;
@@ -981,7 +982,7 @@ public class FastLeaderElection implements Election {
                     notTimeout = (tmpTimeOut < maxNotificationInterval? tmpTimeOut : maxNotificationInterval);
                     LOG.info("Notification time out: " + notTimeout);
                 }
-                //判断是否是有效的投票
+                //判断是否是有效的投票【投票者和被选举为Leader的机器是否有效】
                 else if (validVoter(n.sid) && validVoter(n.leader)) {
                     /*
                      * Only proceed if the vote comes from a replica in the current or next
